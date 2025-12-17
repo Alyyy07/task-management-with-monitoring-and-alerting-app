@@ -5,6 +5,8 @@ import { authenticate } from "./plugins/authenticate.js";
 import { jwtPlugin } from "./plugins/jwt.js";
 import { authRoutes } from "./modules/auth/auth.routes.js";
 import { userRoutes } from "./modules/user/user.routes.js";
+import { organizationRoutes } from "./modules/organization/organization.route.js";
+import { membershipRoutes } from "./modules/membership/membership.route.js";
 
 const app = fastify({
   logger: {
@@ -27,6 +29,8 @@ app.get("/db-test", async (request, reply) => {
 
 app.register(authRoutes, { prefix: "/auth" });
 app.register(userRoutes, { prefix: "/users" });
+app.register(organizationRoutes, { prefix: "/organizations" });
+app.register(membershipRoutes, { prefix: "/organizations" });
 
 app.setErrorHandler((error, request, reply) => {
   request.log.error(error);
