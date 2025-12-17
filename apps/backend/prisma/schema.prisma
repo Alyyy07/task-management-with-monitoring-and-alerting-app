@@ -7,19 +7,94 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+
 model User {
   id        String   @id @default(uuid())
   email     String   @unique
   password  String
-  tasks     Task[]
   createdAt DateTime @default(now())
+
+  memberships Membership[]
+  auditLogs   AuditLog[]
+  activityLogs ActivityLog[]
+  task Task[]
+}
+
+model Organization {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now())
+
+  projects    Project[]
+  memberships Membership[]
+  auditLogs   AuditLog[]
+}
+
+model Membership {
+  id             String @id @default(uuid())
+  role           Role
+  userId         String
+  organizationId String
+
+  user         User         @relation(fields: [userId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([userId, organizationId])
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+model Project {
+  id             String   @id @default(uuid())
+  name           String
+  organizationId String
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  tasks          Task[]
 }
 
 model Task {
   id          String   @id @default(uuid())
   title       String
-  completed   Boolean  @default(false)
-  userId      String
-  user        User     @relation(fields: [userId], references: [id])
+  status      TaskStatus
+  projectId   String
+  assigneeId  String?
   createdAt   DateTime @default(now())
+
+  project  Project @relation(fields: [projectId], references: [id])
+  assignee User?   @relation(fields: [assigneeId], references: [id])
+  activities ActivityLog[]
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+}
+
+model ActivityLog {
+  id        String   @id @default(uuid())
+  action    String
+  taskId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  task Task @relation(fields: [taskId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+}
+
+model AuditLog {
+  id             String   @id @default(uuid())
+  action         String
+  userId         String
+  organizationId String?
+  createdAt      DateTime @default(now())
+
+  user         User          @relation(fields: [userId], references: [id])
+  organization Organization? @relation(fields: [organizationId], references: [id])
 }
