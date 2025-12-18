@@ -1,48 +1,39 @@
-import { FastifyInstance, FastifyRequest } from "fastify";
-import { prisma } from "../../libs/prisma.js";
-import { hashPassword, comparePassword } from "../../utils/password.js";
-import { RegisterBody, LoginBody } from "./auth.types.js";
+import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import { LoginBody, RegisterBody } from "./auth.types.js";
+import { comparePassword } from "../../utils/password.js";
+import { createAuditLog } from "../audit/audit.service.js";
+import { loginUser, registerUser } from "./auth.service.js";
 
 export async function authRoutes(app: FastifyInstance) {
   app.post(
     "/register",
-    async (req: FastifyRequest<{ Body: RegisterBody }>, reply) => {
-      const { email, password } = req.body;
-
-      const existing = await prisma.user.findUnique({ where: { email } });
-      if (existing) {
-        return reply.status(400).send({ message: "User exists" });
-      }
-
-      const user = await prisma.user.create({
-        data: {
-          email,
-          password: await hashPassword(password)
+    async (
+      req: FastifyRequest<{ Body: RegisterBody }>,
+      reply: FastifyReply
+    ) => {
+      try {
+        return await registerUser(req.body.email, req.body.password);
+      } catch (err: any) {
+        if (err.message === "USER_EXISTS") {
+          return reply.status(400).send({ message: "User exists" });
         }
-      });
-
-      return { id: user.id, email: user.email };
+        throw err;
+      }
     }
   );
 
   app.post(
     "/login",
-    async (req: FastifyRequest<{ Body: LoginBody }>, reply) => {
-      const { email, password } = req.body;
-
-      const user = await prisma.user.findUnique({ where: { email } });
-      if (!user) {
-        return reply.status(401).send({ message: "Invalid credentials" });
-      }
-
-      const valid = await comparePassword(password, user.password);
-      if (!valid) {
-        return reply.status(401).send({ message: "Invalid credentials" });
-      }
-
+    async (req: FastifyRequest<{ Body: LoginBody }>, reply: FastifyReply) => {
+      try {
+      const user = await loginUser(req.body.email, req.body.password);
       const token = app.jwt.sign({ userId: user.id });
-
       return { token };
+    } catch (err: any) {
+      if (err.message === "INVALID_CREDENTIALS") {
+        return reply.status(401).send({ message: "Invalid credentials" });
+      }
+      throw err;
     }
-  );
+  });
 }

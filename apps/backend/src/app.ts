@@ -7,19 +7,21 @@ import { authRoutes } from "./modules/auth/auth.routes.js";
 import { userRoutes } from "./modules/user/user.routes.js";
 import { organizationRoutes } from "./modules/organization/organization.route.js";
 import { membershipRoutes } from "./modules/membership/membership.route.js";
+import { metricsPlugin } from "./plugins/metrics.js";
 
 const app = fastify({
   logger: {
     level: "info",
   },
 });
-
+app.register(metricsPlugin);
 app.register(configPlugin);
 app.register(jwtPlugin);
 app.register(authenticate);
 
 app.get("/", async (request, reply) => {
-  return { hello: "world" };
+  throw new Error("Test error handling");
+  return { hello: "halo" };
 });
 
 app.get("/db-test", async (request, reply) => {
