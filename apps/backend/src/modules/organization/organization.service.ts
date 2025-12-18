@@ -1,7 +1,8 @@
 import { prisma } from "../../libs/prisma.js";
+import { createAuditLog } from "../audit/audit.service.js";
 
 export async function createOrganization(userId: string, name: string) {
-  return prisma.organization.create({
+  const org = await prisma.organization.create({
     data: {
       name,
       memberships: {
@@ -12,6 +13,14 @@ export async function createOrganization(userId: string, name: string) {
       }
     }
   });
+
+  await createAuditLog({
+    userId,
+    action:"CREATE_ORGANIZATION",
+    organizationId: org.id
+  });
+
+  return org;
 }
 
 export async function listOrganizations(userId: string) {

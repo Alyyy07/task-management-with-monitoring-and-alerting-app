@@ -1,0 +1,8 @@
+export type AuditAction =
+  | "CREATE_ORGANIZATION"
+  | "INVITE_MEMBER"
+  | "REMOVE_MEMBER"
+  | "CREATE_PROJECT"
+  | "CREATE_TASK"
+  | "LOGIN"
+  | "REGISTER";
