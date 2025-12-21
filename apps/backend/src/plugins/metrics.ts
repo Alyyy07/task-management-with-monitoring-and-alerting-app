@@ -4,6 +4,10 @@ import { FastifyInstance } from "fastify";
 
 export const metricsPlugin = fp(async (app: FastifyInstance) => {
   app.register(fastifyMetrics as any, {
-    endpoint: "/metrics"
+    endpoint: "/metrics",
+    routeMetrics: {
+      enabled: true,
+      groupStatusCodes: false,
+    },
   });
 });

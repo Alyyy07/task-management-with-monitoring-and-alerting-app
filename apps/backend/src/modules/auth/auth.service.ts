@@ -1,43 +1,63 @@
-import { prisma } from "../../libs/prisma.js";
-import { comparePassword, hashPassword } from "../../utils/password.js";
-import { createAuditLog } from "../audit/audit.service.js";
+import { authRepository } from "./auth.repository.js";
+import { hashPassword, comparePassword } from "../../utils/password.js";
+import { AuthError } from "./auth.errors.js";
 
-export async function registerUser(email: string, password: string) {
-  const existing = await prisma.user.findUnique({ where: { email } });
-  if (existing) {
-    throw new Error("USER_EXISTS");
+export class AuthService {
+  async register(email: string, password: string) {
+    const exists = await authRepository.findByEmail(email);
+    if (exists) {
+      throw new AuthError("USER_EXISTS");
+    }
+
+    const hashed = await hashPassword(password);
+    const user = await authRepository.createUser(email, hashed);
+
+    return {
+      id: user.id,
+      email: user.email,
+    };
   }
 
-  const user = await prisma.user.create({
-    data: {
-      email,
-      password: await hashPassword(password),
-    },
-  });
+  async login(email: string, password: string) {
+    const user = await authRepository.findByEmail(email);
+    if (!user) {
+      throw new AuthError("INVALID_CREDENTIALS");
+    }
 
-  await createAuditLog({
-    userId: user.id,
-    action: "REGISTER",
-  });
+    const valid = await comparePassword(password, user.password);
+    if (!valid) {
+      throw new AuthError("INVALID_CREDENTIALS");
+    }
 
-  return { id: user.id, email: user.email };
-}
+    const newRefresh = await authRepository.createRefreshToken(user.id);
 
-export async function loginUser(email: string, password: string) {
-  const user = await prisma.user.findUnique({ where: { email } });
-  if (!user) {
-    throw new Error("INVALID_CREDENTIALS");
+    return {
+      user,
+      refreshToken: newRefresh,
+    };
   }
 
-  const valid = await comparePassword(password, user.password);
-  if (!valid) {
-    throw new Error("INVALID_CREDENTIALS");
+  async refreshToken(oldToken: string) {
+    const stored = await authRepository.findValidRefreshToken(oldToken);
+    if (!stored) {
+      throw new AuthError("INVALID_REFRESH_TOKEN");
+    }
+
+    await authRepository.revokeRefreshToken(stored.id);
+
+    const newRefresh = await authRepository.createRefreshToken(stored.userId);
+
+    return {
+      userId: stored.userId,
+      refreshToken: newRefresh,
+    };
   }
 
-  await createAuditLog({
-    userId: user.id,
-    action: "LOGIN",
-  });
-
-  return user;
+  async revokeRefreshToken(rawToken: string) {
+    const stored = await authRepository.findValidRefreshToken(rawToken);
+    if (!stored) {
+      throw new AuthError("INVALID_REFRESH_TOKEN");
+    }
+    await authRepository.revokeRefreshToken(stored.id);
+  }
 }
