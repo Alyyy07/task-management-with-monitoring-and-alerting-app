@@ -1,6 +1,7 @@
 import { authRepository } from "./auth.repository.js";
 import { hashPassword, comparePassword } from "../../utils/password.js";
 import { AuthError } from "./auth.errors.js";
+import app from "../../app.js";
 
 export class AuthService {
   async register(email: string, password: string) {
@@ -29,6 +30,35 @@ export class AuthService {
       throw new AuthError("INVALID_CREDENTIALS");
     }
 
-    return user;
+    const newRefresh = await authRepository.createRefreshToken(user.id);
+
+    return {
+      user,
+      refreshToken: newRefresh,
+    };
+  }
+
+  async refreshToken(oldToken: string) {
+    const stored = await authRepository.findValidRefreshToken(oldToken);
+    if (!stored) {
+      throw new AuthError("INVALID_REFRESH_TOKEN");
+    }
+
+    await authRepository.revokeRefreshToken(stored.id);
+
+    const newRefresh = await authRepository.createRefreshToken(stored.userId);
+
+    return {
+      userId: stored.userId,
+      refreshToken: newRefresh,
+    };
+  }
+
+  async revokeRefreshToken(rawToken: string) {
+    const stored = await authRepository.findValidRefreshToken(rawToken);
+    if (!stored) {
+      throw new AuthError("INVALID_REFRESH_TOKEN");
+    }
+    await authRepository.revokeRefreshToken(stored.id);
   }
 }

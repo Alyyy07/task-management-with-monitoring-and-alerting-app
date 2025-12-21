@@ -1,6 +1,9 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { AuthService } from "./auth.service.js";
 import { LoginBody, RegisterBody } from "./auth.types.js";
+import { AuthError } from "./auth.errors.js";
+import app from "../../app.js";
+
 
 const authService = new AuthService();
 
@@ -10,37 +13,75 @@ export const authController = {
     reply: FastifyReply
   ) {
     try {
-      const user = await authService.register(
-        req.body.email,
-        req.body.password
-      );
+      const { email, password } = req.body;
+      const user = await authService.register(email, password);
       return reply.status(201).send(user);
     } catch (err: any) {
-      if (err.message === "USER_EXISTS") {
-        return reply.status(400).send({ message: "User already exists" });
+      if (err instanceof AuthError && err.code === "USER_EXISTS") {
+        return reply.status(409).send({ message: "User already exists" });
       }
       throw err;
     }
   },
 
-  async login(
-    req: FastifyRequest<{ Body: LoginBody }>,
+  async login(req: FastifyRequest<{ Body: LoginBody }>, reply: FastifyReply) {
+    try {
+      const { email, password } = req.body;
+      const { user, refreshToken } = await authService.login(email, password);
+
+      const accessToken = app.jwt.sign(
+        { userId: user.id },
+        { expiresIn: "15m" }
+      );
+
+      return reply.send({ accessToken, refreshToken });
+    } catch (err: any) {
+      if (err instanceof AuthError && err.code === "INVALID_CREDENTIALS") {
+        return reply.status(401).send({ message: "Invalid email or password" });
+      }
+      throw err;
+    }
+  },
+
+  async logout(
+    req: FastifyRequest<{ Body: { refreshToken: string } }>,
     reply: FastifyReply
   ) {
     try {
-      const user = await authService.login(
-        req.body.email,
-        req.body.password
-      );
+      const { refreshToken } = req.body;
 
-      const token = reply.server.jwt.sign({ userId: user.id, type: "access" });
+      await authService.revokeRefreshToken(refreshToken);
 
-      return { token };
+      return reply.status(204).send({ success: true });
     } catch (err: any) {
-      if (err.message === "INVALID_CREDENTIALS") {
-        return reply.status(401).send({ message: "Invalid credentials" });
+      if (err instanceof AuthError && err.code === "INVALID_REFRESH_TOKEN") {
+        return reply.status(401).send({ message: "Invalid refresh token" });
       }
       throw err;
+    }
+  },
+
+  async refreshToken(
+    req: FastifyRequest<{ Body: { refreshToken: string } }>,
+    reply: FastifyReply
+  ) {
+    try {
+      const { refreshToken } = req.body;
+
+      const { userId, refreshToken: newRefresh } = await authService.refreshToken(
+        refreshToken
+      );
+
+      const accessToken = app.jwt.sign({ userId }, { expiresIn: "15m" });
+
+      reply.send({
+        accessToken,
+        refreshToken: newRefresh,
+      });
+    } catch (err: any) {
+      if (err instanceof AuthError && err.code === "INVALID_REFRESH_TOKEN") {
+        return reply.status(401).send({ message: "Invalid refresh token" });
+      }
     }
   },
 };
