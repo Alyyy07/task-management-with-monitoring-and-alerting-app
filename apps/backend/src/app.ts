@@ -8,6 +8,8 @@ import { userRoutes } from "./modules/user/user.routes.js";
 import { organizationRoutes } from "./modules/organization/organization.route.js";
 import { membershipRoutes } from "./modules/membership/membership.route.js";
 import { metricsPlugin } from "./plugins/metrics.js";
+import { testRoutes } from "./modules/tes/tes.route.js";
+import "./metrics/db.js";
 
 const app = fastify({
   logger: {
@@ -19,16 +21,7 @@ app.register(configPlugin);
 app.register(jwtPlugin);
 app.register(authenticate);
 
-app.get("/", async (request, reply) => {
-  throw new Error("Test error handling");
-  return { hello: "halo" };
-});
-
-app.get("/db-test", async (request, reply) => {
-  const users = await prisma.user.findMany();
-  return { users };
-});
-
+app.register(testRoutes);
 app.register(authRoutes, { prefix: "/auth" });
 app.register(userRoutes, { prefix: "/users" });
 app.register(organizationRoutes, { prefix: "/organizations" });
