@@ -7,6 +7,9 @@ vi.mock("../auth.repository", () => ({
   authRepository: {
     findByEmail: vi.fn(),
     createUser: vi.fn(),
+    createRefreshToken: vi.fn(),
+    findValidRefreshToken: vi.fn(),
+    revokeRefreshToken: vi.fn(),
   },
 }));
 
@@ -25,14 +28,24 @@ describe("AuthService", () => {
     });
 
     vi.spyOn(passwordUtils, "comparePassword").mockResolvedValue(true);
+    (authRepository.createRefreshToken as any).mockResolvedValue(
+      "new-refresh-token"
+    );
 
-    const user = await service.login("test@mail.com", "password");
+    const { user, refreshToken } = await service.login(
+      "test@mail.com",
+      "password"
+    );
 
     expect(user.email).toBe("test@mail.com");
+    expect(refreshToken).toBe("new-refresh-token");
+
+    expect(authRepository.findByEmail).toHaveBeenCalledWith("test@mail.com");
     expect(passwordUtils.comparePassword).toHaveBeenCalledWith(
       "password",
       "hashed"
     );
+    expect(authRepository.createRefreshToken).toHaveBeenCalledWith("1");
   });
 
   it("should throw error if email is not found", async () => {
@@ -47,6 +60,9 @@ describe("AuthService", () => {
     });
 
     expect(spy).not.toHaveBeenCalled();
+    expect(authRepository.findByEmail).toHaveBeenCalledWith(
+      "notfound@mail.com"
+    );
   });
 
   it("should throw error if password is invalid", async () => {
@@ -57,12 +73,19 @@ describe("AuthService", () => {
     });
 
     vi.spyOn(passwordUtils, "comparePassword").mockResolvedValue(false);
+    const refresh = vi.spyOn(authRepository, "createRefreshToken");
 
     await expect(
       service.login("test@mail.com", "wrong-password")
     ).rejects.toMatchObject({
       code: "INVALID_CREDENTIALS",
     });
+    expect(authRepository.findByEmail).toHaveBeenCalledWith("test@mail.com");
+    expect(passwordUtils.comparePassword).toHaveBeenCalledWith(
+      "wrong-password",
+      "hashed-password"
+    );
+    expect(refresh).not.toHaveBeenCalled();
   });
 
   it("should register user successfully", async () => {
@@ -70,6 +93,9 @@ describe("AuthService", () => {
 
     vi.spyOn(passwordUtils, "hashPassword").mockResolvedValue(
       "hashed-password"
+    );
+    vi.spyOn(authRepository, "createRefreshToken").mockResolvedValue(
+      "new-refresh-token"
     );
 
     (authRepository.createUser as any).mockResolvedValue({
@@ -111,4 +137,63 @@ describe("AuthService", () => {
     expect(authRepository.createUser).not.toHaveBeenCalled();
     expect(hashSpy).not.toHaveBeenCalled();
   });
+});
+
+describe("AuthService - Refresh Token", () => {
+  const service = new AuthService();
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("should rotate refresh token and issue new access token", async () => {
+    const oldToken = "old-refresh-token";
+
+    (authRepository.findValidRefreshToken as any).mockResolvedValue({
+      id: "rt-1",
+      token: oldToken,
+      userId: "user-1",
+    });
+
+    (authRepository.createRefreshToken as any).mockResolvedValue(
+      "new-refresh-token"
+    );
+
+    (authRepository.revokeRefreshToken as any).mockResolvedValue(undefined);
+
+    const result = await service.refreshToken(oldToken);
+
+    expect(authRepository.findValidRefreshToken).toHaveBeenCalledWith(oldToken);
+
+    expect(authRepository.revokeRefreshToken).toHaveBeenCalledWith("rt-1");
+
+    expect(authRepository.createRefreshToken).toHaveBeenCalledWith("user-1");
+
+    expect(result).toEqual({
+      userId: "user-1",
+      refreshToken: "new-refresh-token",
+    });
+  });
+
+  it("should throw error if refresh token is invalid", async () => {
+    (authRepository.findValidRefreshToken as any).mockResolvedValue(null);
+
+    await expect(service.refreshToken("invalid-token")).rejects.toMatchObject({
+      code: "INVALID_REFRESH_TOKEN",
+    });
+
+    expect(authRepository.revokeRefreshToken).not.toHaveBeenCalled();
+    expect(authRepository.createRefreshToken).not.toHaveBeenCalled();
+  });
+
+  it("should not allow reused refresh token", async () => {
+  (authRepository.findValidRefreshToken as any).mockResolvedValue(null);
+
+  await expect(
+    service.refreshToken("old-token")
+  ).rejects.toMatchObject({
+    code: "INVALID_REFRESH_TOKEN",
+  });
+});
+
 });
