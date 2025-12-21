@@ -1,4 +1,5 @@
 import { FastifyRequest, FastifyReply } from "fastify";
+import { AccessTokenPayload } from "../modules/auth/auth.types.ts";
 
 declare module "fastify" {
   interface FastifyInstance {
@@ -15,7 +16,7 @@ declare module "fastify" {
 
 declare module "@fastify/jwt" {
   interface FastifyJWT {
-    payload: JwtPayload;
-    user: JwtPayload;
+    payload: AccessTokenPayload;
+    user: AccessTokenPayload;
   }
 }
