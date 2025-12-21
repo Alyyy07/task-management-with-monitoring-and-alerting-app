@@ -5,7 +5,9 @@ import {
   dbQueryErrorTotal,
 } from "../metrics/db.js";
 
-export const prisma = new PrismaClient().$extends({
+const globalForPrisma = globalThis as any;
+
+export const prisma = globalForPrisma.prisma ?? new PrismaClient().$extends({
   query: {
     $allModels: {
       async $allOperations({ model, operation, args, query }) {
@@ -42,3 +44,7 @@ export const prisma = new PrismaClient().$extends({
     },
   },
 });
+
+if (process.env.NODE_ENV !== "production") {
+  globalForPrisma.prisma = prisma;
+}
