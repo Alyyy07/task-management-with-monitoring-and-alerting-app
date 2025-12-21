@@ -1,7 +1,6 @@
 import { authRepository } from "./auth.repository.js";
 import { hashPassword, comparePassword } from "../../utils/password.js";
 import { AuthError } from "./auth.errors.js";
-import app from "../../app.js";
 
 export class AuthService {
   async register(email: string, password: string) {

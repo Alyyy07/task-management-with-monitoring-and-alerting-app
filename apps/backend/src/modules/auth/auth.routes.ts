@@ -1,11 +1,20 @@
 import { FastifyInstance } from "fastify";
-import { authController } from "./auth.controller.js";
+import { buildAuthController } from "./auth.controller.js";
+import { AuthService } from "./auth.service.js";
 
-export async function authRoutes(app: FastifyInstance) {
+type AuthRoutesOptions = {
+  authService?: AuthService;
+};
 
-  app.post("/login", authController.login);
-  app.post("/register", authController.register);
-  app.post("/refresh", authController.refreshToken);
-  app.post("/logout", authController.logout);
+export async function authRoutes(
+  app: FastifyInstance,
+  opts: AuthRoutesOptions
+) {
+  const authService = opts?.authService || new AuthService();
+  const controller = buildAuthController(authService);
 
+  app.post("/login", controller.login);
+  app.post("/register", controller.register);
+  app.post("/refresh", controller.refreshToken);
+  app.post("/logout", controller.logout);
 }
