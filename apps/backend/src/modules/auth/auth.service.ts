@@ -1,43 +1,36 @@
+import crypto from "crypto";
+import { authRepository } from "./auth.repository.js";
+import { hashPassword, comparePassword } from "../../utils/password.js";
+import { AccessTokenPayload } from "./auth.types.js";
 import { prisma } from "../../libs/prisma.js";
-import { comparePassword, hashPassword } from "../../utils/password.js";
-import { createAuditLog } from "../audit/audit.service.js";
 
-export async function registerUser(email: string, password: string) {
-  const existing = await prisma.user.findUnique({ where: { email } });
-  if (existing) {
-    throw new Error("USER_EXISTS");
+export class AuthService {
+  async register(email: string, password: string) {
+    const exists = await authRepository.findByEmail(email);
+    if (exists) {
+      throw new Error("USER_EXISTS");
+    }
+
+    const hashed = await hashPassword(password);
+    const user = await authRepository.createUser(email, hashed);
+
+    return {
+      id: user.id,
+      email: user.email,
+    };
   }
 
-  const user = await prisma.user.create({
-    data: {
-      email,
-      password: await hashPassword(password),
-    },
-  });
+  async login(email: string, password: string) {
+    const user = await authRepository.findByEmail(email);
+    if (!user) {
+      throw new Error("INVALID_CREDENTIALS");
+    }
 
-  await createAuditLog({
-    userId: user.id,
-    action: "REGISTER",
-  });
+    const valid = await comparePassword(password, user.password);
+    if (!valid) {
+      throw new Error("INVALID_CREDENTIALS");
+    }
 
-  return { id: user.id, email: user.email };
-}
-
-export async function loginUser(email: string, password: string) {
-  const user = await prisma.user.findUnique({ where: { email } });
-  if (!user) {
-    throw new Error("INVALID_CREDENTIALS");
+    return user;
   }
-
-  const valid = await comparePassword(password, user.password);
-  if (!valid) {
-    throw new Error("INVALID_CREDENTIALS");
-  }
-
-  await createAuditLog({
-    userId: user.id,
-    action: "LOGIN",
-  });
-
-  return user;
 }

@@ -11,3 +11,13 @@ export interface LoginBody {
 export interface JwtPayload{
   userId: string;
 }
+
+export interface AccessTokenPayload {
+  userId: string;
+  type: "access";
+}
+
+export interface RefreshTokenPayload {
+  tokenId: string;
+  type: "refresh";
+}
