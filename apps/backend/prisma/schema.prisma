@@ -18,6 +18,7 @@ model User {
   auditLogs   AuditLog[]
   activityLogs ActivityLog[]
   task Task[]
+  refreshToken RefreshToken[]
 }
 
 model Organization {
@@ -99,3 +100,14 @@ model AuditLog {
   user         User          @relation(fields: [userId], references: [id])
   organization Organization? @relation(fields: [organizationId], references: [id])
 }
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  revoked   Boolean  @default(false)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
