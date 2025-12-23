@@ -22,7 +22,13 @@ export function buildAuthController(authService: AuthService) {
         { expiresIn: "15m" }
       );
 
-      return reply.send({ accessToken, refreshToken });
+      return reply
+        .setCookie("refreshToken", refreshToken, {
+          httpOnly: true,
+          sameSite: "strict",
+          path: "/auth",
+        })
+        .send({ accessToken });
     },
 
     async logout(
@@ -33,7 +39,10 @@ export function buildAuthController(authService: AuthService) {
 
       await authService.revokeRefreshToken(refreshToken);
 
-      return reply.status(204).send({ success: true });
+      return reply
+        .status(204)
+        .clearCookie("refreshToken", { path: "/auth" })
+        .send({ success: true });
     },
 
     async refreshToken(
@@ -42,15 +51,20 @@ export function buildAuthController(authService: AuthService) {
     ) {
       const { refreshToken } = req.body;
 
-      const { userId, refreshToken: newRefresh } =
+      const { userId, newRefresh } =
         await authService.refreshToken(refreshToken);
 
       const accessToken = req.server.jwt.sign({ userId }, { expiresIn: "15m" });
 
-      reply.send({
-        accessToken,
-        refreshToken: newRefresh,
-      });
+      reply
+        .setCookie("refreshToken", newRefresh, {
+          httpOnly: true,
+          sameSite: "strict",
+          path: "/auth",
+        })
+        .send({
+          accessToken,
+        });
     },
   };
 }
