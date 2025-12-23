@@ -49,7 +49,7 @@ export class AuthService {
 
     return {
       userId: stored.userId,
-      refreshToken: newRefresh,
+      newRefresh,
     };
   }
 

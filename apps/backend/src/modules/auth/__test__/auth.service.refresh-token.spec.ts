@@ -51,7 +51,7 @@ describe("AuthService - refreshToken", () => {
 
     expect(result).toEqual({
       userId: "user-1",
-      refreshToken: "new-refresh-token",
+      newRefresh: "new-refresh-token",
     });
   });
 
