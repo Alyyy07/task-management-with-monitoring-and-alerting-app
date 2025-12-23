@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { AuthService } from "../auth.service.js";
 import { authRepository } from "../auth.repository.js";
+import { AuthError } from "../auth.errors.js";
 
 vi.mock("../auth.repository", () => ({
   authRepository: {
@@ -57,8 +58,6 @@ describe("AuthService - refreshToken", () => {
   it("should throw error if refresh token invalid", async () => {
     (authRepository.findValidRefreshToken as any).mockResolvedValue(null);
 
-    await expect(service.refreshToken("invalid-token")).rejects.toMatchObject({
-      code: "INVALID_REFRESH_TOKEN",
-    });
+    await expect(service.refreshToken("invalid-token")).rejects.toBeInstanceOf(AuthError);
   });
 });

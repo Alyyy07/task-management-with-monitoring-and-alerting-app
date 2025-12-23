@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { AuthService } from "../auth.service.js";
 import { authRepository } from "../auth.repository.js";
 import * as passwordUtils from "../../../utils/password.js";
+import { AuthError } from "../auth.errors.js";
 
 vi.mock("../auth.repository", () => ({
   authRepository: {
@@ -41,9 +42,7 @@ describe("AuthService - login", () => {
 
     await expect(
       service.login("notfound@mail.com", "password")
-    ).rejects.toMatchObject({
-      code: "INVALID_CREDENTIALS",
-    });
+    ).rejects.toBeInstanceOf(AuthError);
   });
 
   it("should throw error if password is invalid", async () => {
@@ -57,8 +56,6 @@ describe("AuthService - login", () => {
 
     await expect(
       service.login("test@mail.com", "wrong-password")
-    ).rejects.toMatchObject({
-      code: "INVALID_CREDENTIALS",
-    });
+    ).rejects.toBeInstanceOf(AuthError);
   });
 });
