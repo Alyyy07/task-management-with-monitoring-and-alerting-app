@@ -39,8 +39,47 @@ export const loginSchema: FastifySchema = {
       type: "object",
       properties: {
         accessToken: { type: "string" },
-        refreshToken: { type: "string" },
+        csrfToken: { type: "string" },
       },
+    },
+  },
+};
+
+export const refreshSchema: FastifySchema = {
+  body: {
+    type: "object",
+    required: ["refreshToken"],
+    additionalProperties: false,
+    properties: {
+      refreshToken: {
+        type: "string",
+      },
+    },
+  },
+  response: {
+    200: {
+      type: "object",
+      properties: {
+        accessToken: { type: "string" },
+        csrfToken: { type: "string" },
+      },
+    },
+  },
+};
+export const logoutSchema: FastifySchema = {
+  body: {
+    type: "object",
+    required: ["refreshToken"],
+    additionalProperties: false,
+    properties: {
+      refreshToken: {
+        type: "string",
+      },
+    },
+  },
+  response: {
+    204: {
+      type: "object",
     },
   },
 };
