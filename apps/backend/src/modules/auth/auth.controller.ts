@@ -15,7 +15,10 @@ export function buildAuthController(authService: AuthService) {
 
     async login(req: FastifyRequest<{ Body: LoginBody }>, reply: FastifyReply) {
       const { email, password } = req.body;
-      const { user, refreshToken } = await authService.login(email, password);
+      const { user, refreshToken, csrfToken } = await authService.login(
+        email,
+        password
+      );
 
       const accessToken = req.server.jwt.sign(
         { userId: user.id },
@@ -28,14 +31,11 @@ export function buildAuthController(authService: AuthService) {
           sameSite: "strict",
           path: "/auth",
         })
-        .send({ accessToken });
+        .send({ accessToken, csrfToken });
     },
 
-    async logout(
-      req: FastifyRequest<{ Body: { refreshToken: string } }>,
-      reply: FastifyReply
-    ) {
-      const { refreshToken } = req.body;
+    async logout(req: FastifyRequest, reply: FastifyReply) {
+      const { refreshToken } = req.body as { refreshToken: string };
 
       await authService.revokeRefreshToken(refreshToken);
 
@@ -45,14 +45,11 @@ export function buildAuthController(authService: AuthService) {
         .send({ success: true });
     },
 
-    async refreshToken(
-      req: FastifyRequest<{ Body: { refreshToken: string } }>,
-      reply: FastifyReply
-    ) {
-      const { refreshToken } = req.body;
-
-      const { userId, newRefresh } =
-        await authService.refreshToken(refreshToken);
+    async refreshToken(req: FastifyRequest, reply: FastifyReply) {
+      const { refreshToken } = req.body as { refreshToken: string };
+      const { userId, newRefresh } = await authService.refreshToken(
+        refreshToken
+      );
 
       const accessToken = req.server.jwt.sign({ userId }, { expiresIn: "15m" });
 

@@ -2,6 +2,10 @@ import { prisma } from "../../libs/prisma.js";
 import { comparePassword } from "../../utils/password.js";
 import crypto from "crypto";
 
+function hashToken(raw: string) {
+  return crypto.createHash("sha256").update(raw).digest("hex");
+}
+
 export const authRepository = {
   findByEmail(email: string) {
     return prisma.user.findUnique({
@@ -20,13 +24,12 @@ export const authRepository = {
 
   async createRefreshToken(userId: string) {
     const raw = crypto.randomBytes(64).toString("hex");
-    const hash = crypto.createHash("sha256").update(raw).digest("hex");
 
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
     await prisma.refreshToken.create({
       data: {
-        token: hash,
+        token: hashToken(raw),
         userId,
         expiresAt,
       },
@@ -36,11 +39,10 @@ export const authRepository = {
   },
 
   async findValidRefreshToken(rawToken: string) {
-    const hash = crypto.createHash("sha256").update(rawToken).digest("hex");
-
+    
     return prisma.refreshToken.findFirst({
       where: {
-        token: hash,
+        token: hashToken(rawToken),
         revoked: false,
         expiresAt: { gt: new Date() },
       },
@@ -53,4 +55,36 @@ export const authRepository = {
       data: { revoked: true },
     });
   },
+
+  async createCsrfToken(userId: string) {
+    const raw = crypto.randomBytes(32).toString("hex");
+
+    await prisma.csrfToken.create({
+      data: {
+        userId,
+        token: hashToken(raw),
+        expiresAt: new Date(Date.now() + 1000 * 60 * 60),
+      },
+    });
+
+    return raw;
+  },
+
+  async validateCsrfToken(userId: string, raw: string) {
+    const token = await prisma.csrfToken.findFirst({
+      where: {
+        userId,
+        token: hashToken(raw),
+        expiresAt: { gt: new Date() },
+      },
+    });
+
+    return Boolean(token);
+  },
+
+  async revokeCsrfTokens(userId: string) {
+    await prisma.csrfToken.deleteMany({
+      where: { userId },
+    });
+  }
 };

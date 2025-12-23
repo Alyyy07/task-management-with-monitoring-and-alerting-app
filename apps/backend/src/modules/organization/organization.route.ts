@@ -4,11 +4,12 @@ import {
   listOrganizations,
 } from "./organization.service.js";
 import { createOrgSchema } from "./organization.schema.js";
+import { csrfGuard } from "../../plugins/csrf.js";
 
 export async function organizationRoutes(app: FastifyInstance) {
   app.post(
     "/",
-    { preHandler: [app.authenticate], schema: createOrgSchema },
+    { preHandler: [app.authenticate,csrfGuard], schema: createOrgSchema },
     async (request: FastifyRequest) => {
       const { name } = request.body as { name: string };
       return createOrganization(request.user.userId, name);

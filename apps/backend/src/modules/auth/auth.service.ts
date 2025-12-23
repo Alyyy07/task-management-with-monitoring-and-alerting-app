@@ -29,11 +29,13 @@ export class AuthService {
       throw new AuthError(AuthErrorCode.INVALID_CREDENTIALS);
     }
 
-    const newRefresh = await authRepository.createRefreshToken(user.id);
+    const refreshToken = await authRepository.createRefreshToken(user.id);
+    const csrfToken = await authRepository.createCsrfToken(user.id);
 
     return {
       user,
-      refreshToken: newRefresh,
+      refreshToken,
+      csrfToken,
     };
   }
 
@@ -46,10 +48,12 @@ export class AuthService {
     await authRepository.revokeRefreshToken(stored.id);
 
     const newRefresh = await authRepository.createRefreshToken(stored.userId);
+    const csrfToken = await authRepository.createCsrfToken(stored.userId);
 
     return {
       userId: stored.userId,
       newRefresh,
+      csrfToken,
     };
   }
 
@@ -58,6 +62,7 @@ export class AuthService {
     if (!stored) {
       throw new AuthError(AuthErrorCode.INVALID_REFRESH_TOKEN);
     }
+    await authRepository.revokeCsrfTokens(stored.id);
     await authRepository.revokeRefreshToken(stored.id);
   }
 }
