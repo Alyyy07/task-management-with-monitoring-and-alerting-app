@@ -26,7 +26,7 @@ export const authRepository = {
 
     await prisma.refreshToken.create({
       data: {
-        tokenHash: hash,
+        token: hash,
         userId,
         expiresAt,
       },

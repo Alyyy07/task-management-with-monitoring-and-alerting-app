@@ -1,7 +1,6 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { AuthService } from "./auth.service.js";
 import { LoginBody, RegisterBody } from "./auth.types.js";
-import { AuthError } from "./auth.errors.js";
 
 export function buildAuthController(authService: AuthService) {
   return {
