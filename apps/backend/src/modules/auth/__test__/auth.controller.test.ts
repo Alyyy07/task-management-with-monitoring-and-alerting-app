@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import fastify from "fastify";
 import { authRoutes } from "../auth.routes.js";
-import { AuthError } from "../auth.errors.js";
+import { AuthError, AuthErrorCode } from "../auth.errors.js";
 
 describe("Auth Controller", () => {
   beforeEach(() => {
@@ -48,7 +48,7 @@ describe("Auth Controller", () => {
     it("should return 409 when user already exists", async () => {
       mockService.register = vi
         .fn()
-        .mockRejectedValueOnce(new AuthError("USER_EXISTS"));
+        .mockRejectedValueOnce(new AuthError(AuthErrorCode.USER_EXISTS));
       const res = await app.inject({
         method: "POST",
         url: "/auth/register",
@@ -80,7 +80,7 @@ describe("Auth Controller", () => {
     it("should return 401 when login fails", async () => {
       mockService.login = vi
         .fn()
-        .mockRejectedValueOnce(new AuthError("INVALID_CREDENTIALS"));
+        .mockRejectedValueOnce(new AuthError(AuthErrorCode.INVALID_CREDENTIALS));
       const res = await app.inject({
         method: "POST",
         url: "/auth/login",
@@ -110,7 +110,7 @@ describe("Auth Controller", () => {
     it("should return 401 when logout fails", async () => {
       mockService.revokeRefreshToken = vi
         .fn()
-        .mockRejectedValueOnce(new AuthError("INVALID_REFRESH_TOKEN"));
+        .mockRejectedValueOnce(new AuthError(AuthErrorCode.INVALID_REFRESH_TOKEN));
       const res = await app.inject({
         method: "POST",
         url: "/auth/logout",
@@ -143,7 +143,7 @@ describe("Auth Controller", () => {
     it("should return 401 when refresh fails", async () => {
       mockService.refreshToken = vi
         .fn()
-        .mockRejectedValueOnce(new AuthError("INVALID_REFRESH_TOKEN"));
+        .mockRejectedValueOnce(new AuthError(AuthErrorCode.INVALID_REFRESH_TOKEN));
       const res = await app.inject({
         method: "POST",
         url: "/auth/refresh",
