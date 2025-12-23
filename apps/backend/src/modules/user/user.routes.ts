@@ -1,15 +1,13 @@
-import { FastifyInstance } from "fastify";
+import { FastifyInstance, FastifyRequest } from "fastify";
 
 export async function userRoutes(app: FastifyInstance) {
-  app.get(
-    "/me",
-    {
-      preHandler: [app.authenticate]
-    },
-    async (request) => {
+  app.register(async (protectedApp) => {
+    protectedApp.addHook("preHandler", protectedApp.authenticate);
+
+    protectedApp.get("/profile", async (request: FastifyRequest) => {
       return {
-        userId: request.user.userId
+        userId: request.user.userId,
       };
-    }
-  );
+    });
+  });
 }

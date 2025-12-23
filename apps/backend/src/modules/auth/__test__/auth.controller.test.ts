@@ -1,7 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import fastify from "fastify";
 import { authRoutes } from "../auth.routes.js";
-import { AuthError } from "../auth.errors.js";
+import { AuthError, AuthErrorCode } from "../auth.errors.js";
+import fastifyCookie from "@fastify/cookie";
+
+vi.mock("../auth.repository.js", () => ({
+  authRepository: {
+    validateCsrfToken: vi.fn().mockResolvedValue(true),
+  },
+}));
 
 describe("Auth Controller", () => {
   beforeEach(() => {
@@ -9,6 +16,12 @@ describe("Auth Controller", () => {
   });
 
   const app = fastify();
+
+  app.decorate("authenticate", async (request: any, reply: any) => {
+    request.user = { userId: "user-1" };
+  });
+
+  app.register(fastifyCookie);
   app.decorate("jwt", {
     sign: vi.fn().mockReturnValue("access-token"),
   } as any);
@@ -46,9 +59,9 @@ describe("Auth Controller", () => {
       expect(mockService.register).toHaveBeenCalled();
     });
     it("should return 409 when user already exists", async () => {
-      mockService.register = vi
-        .fn()
-        .mockRejectedValueOnce(new AuthError("USER_EXISTS"));
+      (mockService.register as any).mockRejectedValueOnce(
+        new AuthError(AuthErrorCode.USER_EXISTS)
+      );
       const res = await app.inject({
         method: "POST",
         url: "/auth/register",
@@ -78,9 +91,9 @@ describe("Auth Controller", () => {
     });
 
     it("should return 401 when login fails", async () => {
-      mockService.login = vi
-        .fn()
-        .mockRejectedValueOnce(new AuthError("INVALID_CREDENTIALS"));
+      (mockService.login as any).mockRejectedValueOnce(
+        new AuthError(AuthErrorCode.INVALID_CREDENTIALS)
+      );
       const res = await app.inject({
         method: "POST",
         url: "/auth/login",
@@ -99,6 +112,10 @@ describe("Auth Controller", () => {
       const res = await app.inject({
         method: "POST",
         url: "/auth/logout",
+        headers: {
+          authorization: "Bearer token",
+          "x-csrf-token": "csrf-token",
+        },
         payload: {
           refreshToken: "refresh-token",
         },
@@ -108,12 +125,16 @@ describe("Auth Controller", () => {
     });
 
     it("should return 401 when logout fails", async () => {
-      mockService.revokeRefreshToken = vi
-        .fn()
-        .mockRejectedValueOnce(new AuthError("INVALID_REFRESH_TOKEN"));
+      (mockService.revokeRefreshToken as any).mockRejectedValueOnce(
+        new AuthError(AuthErrorCode.INVALID_REFRESH_TOKEN)
+      );
       const res = await app.inject({
         method: "POST",
         url: "/auth/logout",
+        headers: {
+          authorization: "Bearer token",
+          "x-csrf-token": "csrf-token",
+        },
         payload: {
           refreshToken: "invalid-refresh-token",
         },
@@ -125,13 +146,17 @@ describe("Auth Controller", () => {
 
   describe("refreshToken", () => {
     it("should return 200 and new tokens when refresh success", async () => {
-      mockService.refreshToken = vi.fn().mockResolvedValue({
+      (mockService.refreshToken as any).mockResolvedValue({
         userId: "user-1",
         refreshToken: "new-refresh-token",
       });
       const res = await app.inject({
         method: "POST",
         url: "/auth/refresh",
+        headers: {
+          authorization: "Bearer token",
+          "x-csrf-token": "csrf-token",
+        },
         payload: {
           refreshToken: "refresh-token",
         },
@@ -141,18 +166,39 @@ describe("Auth Controller", () => {
     });
 
     it("should return 401 when refresh fails", async () => {
-      mockService.refreshToken = vi
-        .fn()
-        .mockRejectedValueOnce(new AuthError("INVALID_REFRESH_TOKEN"));
+      (mockService.refreshToken as any).mockRejectedValueOnce(
+        new AuthError(AuthErrorCode.INVALID_REFRESH_TOKEN)
+      );
       const res = await app.inject({
         method: "POST",
         url: "/auth/refresh",
+        headers: {
+          authorization: "Bearer token",
+          "x-csrf-token": "csrf-token",
+        },
         payload: {
           refreshToken: "invalid-refresh-token",
         },
       });
       expect(res.statusCode).toBe(401);
       expect(mockService.refreshToken).toHaveBeenCalled();
+    });
+  });
+
+  describe("Csrf Token", () => {
+    it("should reject request without csrf token", async () => {
+      const res = await app.inject({
+        method: "POST",
+        url: "/auth/logout",
+        headers: {
+          authorization: "Bearer token",
+        },
+        payload: {
+          refreshToken: "refresh-token",
+        },
+      });
+
+      expect(res.statusCode).toBe(403);
     });
   });
 });

@@ -11,6 +11,8 @@ import { membershipRoutes } from "./modules/membership/membership.route.js";
 import { metricsPlugin } from "./plugins/metrics.js";
 import { testRoutes } from "./modules/tes/tes.route.js";
 import "./metrics/db.js";
+import { AppError } from "./utils/app.error.js";
+import fastifyCookie from "@fastify/cookie";
 
 const app = fastify({
   logger: {
@@ -19,6 +21,7 @@ const app = fastify({
 });
 
 app.register(helmet);
+app.register(fastifyCookie);
 app.register(rateLimit, {
   max: 10,
   timeWindow: "1 minute",
@@ -44,6 +47,18 @@ app.get("/health", async () => ({
 }));
 
 app.setErrorHandler((error, request, reply) => {
+  if (error instanceof AppError) {
+    return reply
+      .status(error.statusCode)
+      .send({ error: error.code, message: error.message });
+  }
+  
+  if (typeof error === "object" && error !== null && "statusCode" in error && "message" in error) {
+    return reply.status((error as any).statusCode).send({
+      message: (error as any).message,
+    });
+  }
+
   request.log.error(error);
   reply.status(500).send({ error: "Internal Server Error" });
 });

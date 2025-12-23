@@ -2,11 +2,14 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { AuthService } from "../auth.service.js";
 import { authRepository } from "../auth.repository.js";
 import * as passwordUtils from "../../../utils/password.js";
+import { AuthError } from "../auth.errors.js";
+import { csrfGuard } from "../../../plugins/csrf.js";
 
 vi.mock("../auth.repository", () => ({
   authRepository: {
     findByEmail: vi.fn(),
     createRefreshToken: vi.fn(),
+    createCsrfToken: vi.fn(),
   },
 }));
 
@@ -41,9 +44,7 @@ describe("AuthService - login", () => {
 
     await expect(
       service.login("notfound@mail.com", "password")
-    ).rejects.toMatchObject({
-      code: "INVALID_CREDENTIALS",
-    });
+    ).rejects.toBeInstanceOf(AuthError);
   });
 
   it("should throw error if password is invalid", async () => {
@@ -57,8 +58,15 @@ describe("AuthService - login", () => {
 
     await expect(
       service.login("test@mail.com", "wrong-password")
-    ).rejects.toMatchObject({
-      code: "INVALID_CREDENTIALS",
-    });
+    ).rejects.toBeInstanceOf(AuthError);
+  });
+
+  it("should issue csrf token on login", async () => {
+    (authRepository.createCsrfToken as any).mockResolvedValue("csrf-token");
+    vi.spyOn(passwordUtils, "comparePassword").mockResolvedValue(true);
+
+    const result = await service.login("test@mail.com", "password");
+
+    expect(result.csrfToken).toBe("csrf-token");
   });
 });

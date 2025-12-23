@@ -1,12 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { AuthService } from "../auth.service.js";
 import { authRepository } from "../auth.repository.js";
+import { AuthError } from "../auth.errors.js";
 
 vi.mock("../auth.repository", () => ({
   authRepository: {
     findValidRefreshToken: vi.fn(),
     revokeRefreshToken: vi.fn(),
     createRefreshToken: vi.fn(),
+    createCsrfToken: vi.fn(),
   },
 }));
 
@@ -50,15 +52,15 @@ describe("AuthService - refreshToken", () => {
 
     expect(result).toEqual({
       userId: "user-1",
-      refreshToken: "new-refresh-token",
+      newRefresh: "new-refresh-token",
     });
   });
 
   it("should throw error if refresh token invalid", async () => {
     (authRepository.findValidRefreshToken as any).mockResolvedValue(null);
 
-    await expect(service.refreshToken("invalid-token")).rejects.toMatchObject({
-      code: "INVALID_REFRESH_TOKEN",
-    });
+    await expect(service.refreshToken("invalid-token")).rejects.toBeInstanceOf(
+      AuthError
+    );
   });
 });

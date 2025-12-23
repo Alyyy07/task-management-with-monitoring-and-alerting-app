@@ -9,8 +9,9 @@ declare module "fastify" {
     ): Promise<void>;
   }
   interface FastifyRequest{
-    startTime?: [number, number];
-    routerPath?: string;
+    user:{
+      id: string;
+    };
   }
 }
 

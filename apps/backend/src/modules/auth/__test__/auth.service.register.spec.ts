@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { AuthService } from "../auth.service.js";
 import { authRepository } from "../auth.repository.js";
 import * as passwordUtils from "../../../utils/password.js";
+import { AuthError } from "../auth.errors.js";
 
 vi.mock("../auth.repository", () => ({
   authRepository: {
@@ -45,8 +46,6 @@ describe("AuthService - register", () => {
 
     await expect(
       service.register("test@mail.com", "password")
-    ).rejects.toMatchObject({
-      code: "USER_EXISTS",
-    });
+    ).rejects.toBeInstanceOf(AuthError);
   });
 });

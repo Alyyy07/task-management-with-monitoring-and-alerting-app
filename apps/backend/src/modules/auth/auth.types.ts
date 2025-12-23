@@ -8,6 +8,6 @@ export interface LoginBody {
   password: string;
 }
 
-export interface JwtPayload{
+export interface AccessTokenPayload{
   userId: string;
 }
