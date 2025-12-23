@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import fastify from "fastify";
 import { authRoutes } from "../auth.routes.js";
 import { AuthError, AuthErrorCode } from "../auth.errors.js";
+import fastifyCookie from "@fastify/cookie";
 
 describe("Auth Controller", () => {
   beforeEach(() => {
@@ -9,6 +10,8 @@ describe("Auth Controller", () => {
   });
 
   const app = fastify();
+
+  app.register(fastifyCookie);
   app.decorate("jwt", {
     sign: vi.fn().mockReturnValue("access-token"),
   } as any);
@@ -80,7 +83,9 @@ describe("Auth Controller", () => {
     it("should return 401 when login fails", async () => {
       mockService.login = vi
         .fn()
-        .mockRejectedValueOnce(new AuthError(AuthErrorCode.INVALID_CREDENTIALS));
+        .mockRejectedValueOnce(
+          new AuthError(AuthErrorCode.INVALID_CREDENTIALS)
+        );
       const res = await app.inject({
         method: "POST",
         url: "/auth/login",
@@ -110,7 +115,9 @@ describe("Auth Controller", () => {
     it("should return 401 when logout fails", async () => {
       mockService.revokeRefreshToken = vi
         .fn()
-        .mockRejectedValueOnce(new AuthError(AuthErrorCode.INVALID_REFRESH_TOKEN));
+        .mockRejectedValueOnce(
+          new AuthError(AuthErrorCode.INVALID_REFRESH_TOKEN)
+        );
       const res = await app.inject({
         method: "POST",
         url: "/auth/logout",
@@ -143,7 +150,9 @@ describe("Auth Controller", () => {
     it("should return 401 when refresh fails", async () => {
       mockService.refreshToken = vi
         .fn()
-        .mockRejectedValueOnce(new AuthError(AuthErrorCode.INVALID_REFRESH_TOKEN));
+        .mockRejectedValueOnce(
+          new AuthError(AuthErrorCode.INVALID_REFRESH_TOKEN)
+        );
       const res = await app.inject({
         method: "POST",
         url: "/auth/refresh",
