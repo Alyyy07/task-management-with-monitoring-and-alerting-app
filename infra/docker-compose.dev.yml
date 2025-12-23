@@ -8,7 +8,7 @@ services:
       - ./../apps/backend:/app
       - /app/node_modules
     env_file:
-      - ../apps/backend/.env
+      - ../apps/backend/.env.local
     command: sh -c "npx prisma generate && npm run dev"
     depends_on:
       - db
