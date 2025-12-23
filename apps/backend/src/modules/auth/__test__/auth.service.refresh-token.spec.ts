@@ -8,6 +8,7 @@ vi.mock("../auth.repository", () => ({
     findValidRefreshToken: vi.fn(),
     revokeRefreshToken: vi.fn(),
     createRefreshToken: vi.fn(),
+    createCsrfToken: vi.fn(),
   },
 }));
 
@@ -58,6 +59,8 @@ describe("AuthService - refreshToken", () => {
   it("should throw error if refresh token invalid", async () => {
     (authRepository.findValidRefreshToken as any).mockResolvedValue(null);
 
-    await expect(service.refreshToken("invalid-token")).rejects.toBeInstanceOf(AuthError);
+    await expect(service.refreshToken("invalid-token")).rejects.toBeInstanceOf(
+      AuthError
+    );
   });
 });
