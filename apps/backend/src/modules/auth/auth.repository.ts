@@ -40,7 +40,7 @@ export const authRepository = {
 
     return prisma.refreshToken.findFirst({
       where: {
-        tokenHash: hash,
+        token: hash,
         revoked: false,
         expiresAt: { gt: new Date() },
       },
