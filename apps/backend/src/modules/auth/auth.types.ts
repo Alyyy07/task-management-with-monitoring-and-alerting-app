@@ -48,4 +48,8 @@ export interface AuthRepository {
   ): Promise<void>;
 
   revokeCsrfTokens(userId: string): Promise<void>;
+  validateCsrfToken(
+    rawRefreshToken: string,
+    rawCsrfToken: string
+  ): Promise<boolean>;
 }

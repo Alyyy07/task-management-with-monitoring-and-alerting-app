@@ -70,4 +70,27 @@ export const authRepository: AuthRepository = {
       where: { userId },
     });
   },
+
+  async validateCsrfToken(refreshToken: string, rawCsrf: string) {
+  const storedRefresh = await prisma.refreshToken.findFirst({
+    where: {
+      token: hashToken(refreshToken),
+      revoked: false,
+      expiresAt: { gt: new Date() },
+    },
+  });
+
+  if (!storedRefresh) return false;
+
+  const csrf = await prisma.csrfToken.findFirst({
+    where: {
+      userId: storedRefresh.userId,
+      token: hashToken(rawCsrf),
+      expiresAt: { gt: new Date() },
+    },
+  });
+
+  return Boolean(csrf);
+}
+
 };
