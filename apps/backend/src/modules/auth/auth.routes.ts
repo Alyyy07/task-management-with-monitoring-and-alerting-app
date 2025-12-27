@@ -3,7 +3,6 @@ import { buildAuthController } from "./auth.controller.js";
 import { AuthService } from "./auth.service.js";
 import {
   loginSchema,
-  logoutSchema,
   registerSchema,
 } from "./auth.schema.js";
 import { csrfGuard } from "../../plugins/csrf.js";
@@ -50,7 +49,6 @@ export async function authRoutes(
     "/logout",
     {
       preHandler: [app.authenticate, csrfGuard],
-      schema: logoutSchema,
     },
     controller.logout
   );
