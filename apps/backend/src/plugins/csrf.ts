@@ -12,7 +12,7 @@ export async function csrfGuard(req: FastifyRequest, reply: FastifyReply) {
   const refreshToken = req.cookies.refreshToken;
 
   if (!refreshToken) {
-    throw new AuthError(AuthErrorCode.CSRF_REQUIRED);
+    throw new AuthError(AuthErrorCode.NO_TOKEN);
   }
 
   const valid = await authRepository.validateCsrfToken(refreshToken, csrfToken);
