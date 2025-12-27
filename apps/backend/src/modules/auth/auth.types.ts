@@ -13,6 +13,7 @@ export interface AccessTokenPayload {
 }
 export interface TokenService {
   signAccessToken(payload: { userId: string }): string;
+  verifyAccessToken(token: string): { userId: string };
 }
 export interface AuthResult {
   accessToken: string;

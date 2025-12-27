@@ -9,7 +9,7 @@ declare module "fastify" {
     ): Promise<void>;
   }
   interface FastifyRequest{
-    user:{
+    user?:{
       id: string;
     };
   }

@@ -2,6 +2,7 @@ import { TokenService } from "../modules/auth/auth.types.js";
 
 export type JwtSigner = {
   sign(payload: object, options?: { expiresIn?: string | number }): string;
+  verify(token: string): object;
 };
 
 type JwtTokenServiceOptions = {
@@ -19,5 +20,9 @@ export class JwtTokenService implements TokenService {
       { userId: payload.userId },
       { expiresIn: this.options.accessTokenTtl }
     );
+  }
+
+  verifyAccessToken(token: string): { userId: string } {
+    return this.signer.verify(token) as { userId: string };
   }
 }
