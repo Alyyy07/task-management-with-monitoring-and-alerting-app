@@ -5,7 +5,8 @@ export enum AuthErrorCode {
   INVALID_ACCESS_TOKEN = "INVALID_ACCESS_TOKEN",
   UNAUTHORIZED = "UNAUTHORIZED",
   NO_TOKEN = "NO_TOKEN",
-
+  CSRF_REQUIRED = "CSRF_REQUIRED",
+  INVALID_CSRF_TOKEN = "INVALID_CSRF_TOKEN",
 }
 export class AuthError extends Error {
   constructor(public code: AuthErrorCode) {

@@ -24,6 +24,14 @@ function handleAuthError(error: AuthError, reply: any) {
 
     case AuthErrorCode.INVALID_REFRESH_TOKEN:
       return reply.status(401).send({ error: error.code });
+    case AuthErrorCode.INVALID_ACCESS_TOKEN:
+      return reply.status(401).send({ error: error.code });
+    case AuthErrorCode.NO_TOKEN:
+      return reply.status(401).send({ error: error.code });
+    case AuthErrorCode.CSRF_REQUIRED:
+      return reply.status(403).send({ error: error.code });
+    case AuthErrorCode.INVALID_CSRF_TOKEN:
+      return reply.status(403).send({ error: error.code });
 
     default:
       return reply.status(400).send({ error: error.code });
