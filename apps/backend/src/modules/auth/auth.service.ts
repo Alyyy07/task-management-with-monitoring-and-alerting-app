@@ -1,16 +1,24 @@
-import { authRepository } from "./auth.repository.js";
-import { hashPassword, comparePassword } from "../../utils/password.js";
+// auth.service.ts
+import crypto from "crypto";
+import { comparePassword, hashPassword } from "../../utils/password.js";
 import { AuthError, AuthErrorCode } from "./auth.errors.js";
+import { AuthRepository, AuthResult, TokenService } from "./auth.types.js";
+
 
 export class AuthService {
+  constructor(
+    private readonly authRepository: AuthRepository,
+    private readonly tokenService: TokenService
+  ) {}
+
   async register(email: string, password: string) {
-    const exists = await authRepository.findByEmail(email);
+    const exists = await this.authRepository.findByEmail(email);
     if (exists) {
       throw new AuthError(AuthErrorCode.USER_EXISTS);
     }
 
     const hashed = await hashPassword(password);
-    const user = await authRepository.createUser(email, hashed);
+    const user = await this.authRepository.createUser(email, hashed);
 
     return {
       id: user.id,
@@ -18,8 +26,8 @@ export class AuthService {
     };
   }
 
-  async login(email: string, password: string) {
-    const user = await authRepository.findByEmail(email);
+  async login(email: string, password: string): Promise<AuthResult> {
+    const user = await this.authRepository.findByEmail(email);
     if (!user) {
       throw new AuthError(AuthErrorCode.INVALID_CREDENTIALS);
     }
@@ -29,40 +37,75 @@ export class AuthService {
       throw new AuthError(AuthErrorCode.INVALID_CREDENTIALS);
     }
 
-    const refreshToken = await authRepository.createRefreshToken(user.id);
-    const csrfToken = await authRepository.createCsrfToken(user.id);
+    // single-session model
+    await this.authRepository.revokeAllRefreshTokens(user.id);
+
+    const refreshToken = this.issueRefreshToken(user.id);
+    const csrfToken = this.issueCsrfToken(user.id);
+
+    const accessToken = this.tokenService.signAccessToken({
+      userId: user.id,
+    });
 
     return {
-      user,
+      accessToken,
       refreshToken,
       csrfToken,
     };
   }
 
-  async refreshToken(oldToken: string) {
-    const stored = await authRepository.findValidRefreshToken(oldToken);
+  async refresh(rawRefreshToken: string): Promise<AuthResult> {
+    const stored =
+      await this.authRepository.findValidRefreshToken(rawRefreshToken);
+
     if (!stored) {
       throw new AuthError(AuthErrorCode.INVALID_REFRESH_TOKEN);
     }
 
-    await authRepository.revokeRefreshToken(stored.id);
+    await this.authRepository.revokeRefreshToken(stored.id);
 
-    const newRefresh = await authRepository.createRefreshToken(stored.userId);
-    const csrfToken = await authRepository.createCsrfToken(stored.userId);
+    const refreshToken = this.issueRefreshToken(stored.userId);
+    const csrfToken = this.issueCsrfToken(stored.userId);
+
+    const accessToken = this.tokenService.signAccessToken({
+      userId: stored.userId,
+    });
 
     return {
-      userId: stored.userId,
-      newRefresh,
+      accessToken,
+      refreshToken,
       csrfToken,
     };
   }
 
   async revokeRefreshToken(rawToken: string) {
-    const stored = await authRepository.findValidRefreshToken(rawToken);
+    const stored =
+      await this.authRepository.findValidRefreshToken(rawToken);
+
     if (!stored) {
       throw new AuthError(AuthErrorCode.INVALID_REFRESH_TOKEN);
     }
-    await authRepository.revokeCsrfTokens(stored.id);
-    await authRepository.revokeRefreshToken(stored.id);
+
+    await this.authRepository.revokeCsrfTokens(stored.userId);
+    await this.authRepository.revokeRefreshToken(stored.id);
+  }
+
+
+  private issueRefreshToken(userId: string): string {
+    const raw = crypto.randomBytes(64).toString("hex");
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+    this.authRepository.storeRefreshToken(userId, raw, expiresAt);
+
+    return raw;
+  }
+
+  private issueCsrfToken(userId: string): string {
+    const raw = crypto.randomBytes(32).toString("hex");
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+
+    this.authRepository.storeCsrfToken(userId, raw, expiresAt);
+
+    return raw;
   }
 }

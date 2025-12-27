@@ -1,15 +1,13 @@
 import { FastifyRequest, FastifyReply } from "fastify";
-import { AccessTokenPayload } from "../modules/auth/auth.types.ts";
+import { AccessTokenPayload, TokenService } from "../modules/auth/auth.types.ts";
 
 declare module "fastify" {
   interface FastifyInstance {
-    authenticate(
-      request: FastifyRequest,
-      reply: FastifyReply
-    ): Promise<void>;
+    authenticate: (req: FastifyRequest) => Promise<void>;
+    tokenService: TokenService;
   }
   interface FastifyRequest{
-    user:{
+    user?:{
       id: string;
     };
   }

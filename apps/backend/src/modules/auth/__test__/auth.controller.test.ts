@@ -1,204 +1,189 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import fastify from "fastify";
-import { authRoutes } from "../auth.routes.js";
 import { AuthError, AuthErrorCode } from "../auth.errors.js";
-import fastifyCookie from "@fastify/cookie";
+import fastify from "fastify";
+import { registerErrorHandler } from "../../../plugins/error-handler.plugin.js";
+import cookie from "@fastify/cookie";
+import { buildAuthController } from "../auth.controller.js";
 
-vi.mock("../auth.repository.js", () => ({
-  authRepository: {
-    validateCsrfToken: vi.fn().mockResolvedValue(true),
-  },
-}));
+const authServiceMock = {
+  register: vi.fn(),
+  login: vi.fn(),
+  refresh: vi.fn(),
+  revokeRefreshToken: vi.fn(),
+};
 
-describe("Auth Controller", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
+function buildTestApp(authServiceMock: any) {
   const app = fastify();
+  registerErrorHandler(app);
+  app.register(cookie);
 
-  app.decorate("authenticate", async (request: any, reply: any) => {
-    request.user = { userId: "user-1" };
-  });
+  const controller = buildAuthController(authServiceMock);
 
-  app.register(fastifyCookie);
-  app.decorate("jwt", {
-    sign: vi.fn().mockReturnValue("access-token"),
-  } as any);
+  app.post("/auth/register", controller.register);
+  app.post("/auth/login", controller.login);
+  app.post("/auth/logout", controller.logout);
+  app.post("/auth/refresh", controller.refresh);
 
-  const mockService = {
-    register: vi.fn().mockResolvedValue({
+  return app;
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
+describe("Auth Controller", () => {
+  it("POST /auth/register returns 201", async () => {
+    authServiceMock.register.mockResolvedValue({
       id: "user-1",
-      email: "test@mail.com",
-    }),
-    login: vi.fn().mockResolvedValue({
-      user: { id: "user-1", email: "test@mail.com" },
-      refreshToken: "refresh-token",
+      email: "test@test.com",
+    });
+
+    const app = buildTestApp(authServiceMock);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/auth/register",
+      payload: {
+        email: "test@test.com",
+        password: "password",
+      },
+    });
+
+    expect(res.statusCode).toBe(201);
+    expect(JSON.parse(res.body)).toEqual({
+      id: "user-1",
+      email: "test@test.com",
+    });
+
+    expect(authServiceMock.register).toHaveBeenCalledWith(
+      "test@test.com",
+      "password"
+    );
+  });
+
+  it("POST /auth/login sets refresh cookie and returns access token", async () => {
+    authServiceMock.login.mockResolvedValue({
       accessToken: "access-token",
-    }),
-    refreshToken: vi.fn(),
-    revokeRefreshToken: vi.fn(),
-  };
-
-  app.register(authRoutes, {
-    prefix: "/auth",
-    authService: mockService,
-  });
-  describe("register", () => {
-    it("should return 201 when register success", async () => {
-      const res = await app.inject({
-        method: "POST",
-        url: "/auth/register",
-        payload: {
-          email: "test@mail.com",
-          password: "password",
-        },
-      });
-
-      expect(res.statusCode).toBe(201);
-      expect(mockService.register).toHaveBeenCalled();
+      refreshToken: "refresh-token",
+      csrfToken: "csrf-token",
     });
-    it("should return 409 when user already exists", async () => {
-      (mockService.register as any).mockRejectedValueOnce(
-        new AuthError(AuthErrorCode.USER_EXISTS)
-      );
-      const res = await app.inject({
-        method: "POST",
-        url: "/auth/register",
-        payload: {
-          email: "test@mail.com",
-          password: "password",
-        },
-      });
-      expect(res.statusCode).toBe(409);
-      expect(mockService.register).toHaveBeenCalled();
+
+    const app = buildTestApp(authServiceMock);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/auth/login",
+      payload: {
+        email: "test@test.com",
+        password: "password",
+      },
     });
+
+    expect(res.statusCode).toBe(200);
+
+    const body = JSON.parse(res.body);
+    expect(body).toEqual({
+      accessToken: "access-token",
+      csrfToken: "csrf-token",
+    });
+
+    const setCookie = res.headers["set-cookie"];
+    expect(setCookie).toContain("refreshToken=refresh-token");
+    expect(setCookie).toContain("HttpOnly");
   });
 
-  describe("login", () => {
-    it("should return 200 and tokens when login success", async () => {
-      const res = await app.inject({
-        method: "POST",
-        url: "/auth/login",
-        payload: {
-          email: "test@mail.com",
-          password: "password",
-        },
-      });
+  it("POST /auth/login returns 401 on invalid credentials", async () => {
+    authServiceMock.login.mockRejectedValue(
+      new AuthError(AuthErrorCode.INVALID_CREDENTIALS)
+    );
 
-      expect(res.statusCode).toBe(200);
-      expect(mockService.login).toHaveBeenCalled();
+    const app = buildTestApp(authServiceMock);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/auth/login",
+      payload: {
+        email: "bad@test.com",
+        password: "wrong",
+      },
     });
 
-    it("should return 401 when login fails", async () => {
-      (mockService.login as any).mockRejectedValueOnce(
-        new AuthError(AuthErrorCode.INVALID_CREDENTIALS)
-      );
-      const res = await app.inject({
-        method: "POST",
-        url: "/auth/login",
-        payload: {
-          email: "test@mail.com",
-          password: "wrong-password",
-        },
-      });
-      expect(res.statusCode).toBe(401);
-      expect(mockService.login).toHaveBeenCalled();
+    expect(res.statusCode).toBe(401);
+    expect(JSON.parse(res.body)).toEqual({
+      error: "INVALID_CREDENTIALS",
     });
   });
 
-  describe("logout", () => {
-    it("should return 204 when logout success", async () => {
-      const res = await app.inject({
-        method: "POST",
-        url: "/auth/logout",
-        headers: {
-          authorization: "Bearer token",
-          "x-csrf-token": "csrf-token",
-        },
-        payload: {
-          refreshToken: "refresh-token",
-        },
-      });
-      expect(res.statusCode).toBe(204);
-      expect(mockService.revokeRefreshToken).toHaveBeenCalled();
+  it("POST /auth/refresh reads refresh token from cookie", async () => {
+    authServiceMock.refresh.mockResolvedValue({
+      accessToken: "new-access",
+      refreshToken: "new-refresh",
     });
 
-    it("should return 401 when logout fails", async () => {
-      (mockService.revokeRefreshToken as any).mockRejectedValueOnce(
-        new AuthError(AuthErrorCode.INVALID_REFRESH_TOKEN)
-      );
-      const res = await app.inject({
-        method: "POST",
-        url: "/auth/logout",
-        headers: {
-          authorization: "Bearer token",
-          "x-csrf-token": "csrf-token",
-        },
-        payload: {
-          refreshToken: "invalid-refresh-token",
-        },
-      });
-      expect(res.statusCode).toBe(401);
-      expect(mockService.revokeRefreshToken).toHaveBeenCalled();
+    const app = buildTestApp(authServiceMock);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/auth/refresh",
+      headers: {
+        cookie: "refreshToken=old-refresh",
+      },
     });
+
+    expect(res.statusCode).toBe(200);
+
+    const body = JSON.parse(res.body);
+    expect(body.accessToken).toBe("new-access");
+
+    expect(res.headers["set-cookie"]).toContain("refreshToken=new-refresh");
+
+    expect(authServiceMock.refresh).toHaveBeenCalledWith("old-refresh");
   });
 
-  describe("refreshToken", () => {
-    it("should return 200 and new tokens when refresh success", async () => {
-      (mockService.refreshToken as any).mockResolvedValue({
-        userId: "user-1",
-        refreshToken: "new-refresh-token",
-      });
-      const res = await app.inject({
-        method: "POST",
-        url: "/auth/refresh",
-        headers: {
-          authorization: "Bearer token",
-          "x-csrf-token": "csrf-token",
-        },
-        payload: {
-          refreshToken: "refresh-token",
-        },
-      });
-      expect(res.statusCode).toBe(200);
-      expect(mockService.refreshToken).toHaveBeenCalled();
+  it("POST /auth/refresh returns 401 if no refresh cookie", async () => {
+    const app = buildTestApp(authServiceMock);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/auth/refresh",
     });
 
-    it("should return 401 when refresh fails", async () => {
-      (mockService.refreshToken as any).mockRejectedValueOnce(
-        new AuthError(AuthErrorCode.INVALID_REFRESH_TOKEN)
-      );
-      const res = await app.inject({
-        method: "POST",
-        url: "/auth/refresh",
-        headers: {
-          authorization: "Bearer token",
-          "x-csrf-token": "csrf-token",
-        },
-        payload: {
-          refreshToken: "invalid-refresh-token",
-        },
-      });
-      expect(res.statusCode).toBe(401);
-      expect(mockService.refreshToken).toHaveBeenCalled();
-    });
+    expect(res.statusCode).toBe(401);
   });
 
-  describe("Csrf Token", () => {
-    it("should reject request without csrf token", async () => {
-      const res = await app.inject({
-        method: "POST",
-        url: "/auth/logout",
-        headers: {
-          authorization: "Bearer token",
-        },
-        payload: {
-          refreshToken: "refresh-token",
-        },
-      });
+  it("POST /auth/logout clears refresh cookie", async () => {
+    authServiceMock.revokeRefreshToken.mockResolvedValue(undefined);
 
-      expect(res.statusCode).toBe(403);
+    const app = buildTestApp(authServiceMock);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/auth/logout",
+      headers: {
+        cookie: "refreshToken=refresh-token",
+      },
+    });
+
+    expect(res.statusCode).toBe(204);
+    expect(res.headers["set-cookie"]).toContain("refreshToken=");
+  });
+
+  it("returns 500 for unknown errors", async () => {
+    authServiceMock.login.mockRejectedValue(new Error("boom"));
+
+    const app = buildTestApp(authServiceMock);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/auth/login",
+      payload: {
+        email: "test@test.com",
+        password: "password",
+      },
+    });
+
+    expect(res.statusCode).toBe(500);
+    expect(JSON.parse(res.body)).toEqual({
+      error: "INTERNAL_SERVER_ERROR",
     });
   });
 });

@@ -1,22 +1,23 @@
 import { FastifyRequest, FastifyReply } from "fastify";
 import { authRepository } from "../modules/auth/auth.repository.js";
+import { AuthError, AuthErrorCode } from "../modules/auth/auth.errors.js";
 
-export async function csrfGuard(
-  request: FastifyRequest,
-  reply: FastifyReply
-) {
-  const token = request.headers["x-csrf-token"];
-  if (!token || typeof token !== "string") {
-    return reply.status(403).send({ message: "CSRF token missing" });
+export async function csrfGuard(req: FastifyRequest, reply: FastifyReply) {
+  const csrfToken = req.headers["x-csrf-token"];
+
+  if (!csrfToken || typeof csrfToken !== "string") {
+    throw new AuthError(AuthErrorCode.CSRF_REQUIRED);
   }
-  
-  const userId = request.user?.userId;
-  if (!userId) {
-    return reply.status(401).send({ message: "Unauthenticated" });
+
+  const refreshToken = req.cookies.refreshToken;
+
+  if (!refreshToken) {
+    throw new AuthError(AuthErrorCode.NO_REFRESH_TOKEN);
   }
-  
-  const valid = await authRepository.validateCsrfToken(userId, token);
+
+  const valid = await authRepository.validateCsrfToken(refreshToken, csrfToken);
+
   if (!valid) {
-    return reply.status(403).send({ message: "Invalid CSRF token" });
+    throw new AuthError(AuthErrorCode.INVALID_CSRF_TOKEN);
   }
 }
