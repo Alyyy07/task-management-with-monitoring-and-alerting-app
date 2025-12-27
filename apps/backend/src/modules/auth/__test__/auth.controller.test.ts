@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { buildTestApp } from "../../../tests/utils/buildTestApp.js";
 import { AuthError, AuthErrorCode } from "../auth.errors.js";
+import fastify from "fastify";
+import { registerErrorHandler } from "../../../plugins/error-handler.plugin.js";
+import cookie from "@fastify/cookie";
+import { buildAuthController } from "../auth.controller.js";
 
 const authServiceMock = {
   register: vi.fn(),
@@ -8,6 +11,22 @@ const authServiceMock = {
   refresh: vi.fn(),
   revokeRefreshToken: vi.fn(),
 };
+
+function buildTestApp(authServiceMock: any) {
+  const app = fastify();
+  registerErrorHandler(app);
+  app.register(cookie);
+
+  const controller = buildAuthController(authServiceMock);
+
+  app.post("/auth/register", controller.register);
+  app.post("/auth/login", controller.login);
+  app.post("/auth/logout", controller.logout);
+  app.post("/auth/refresh", controller.refresh);
+
+  return app;
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
 });
@@ -73,26 +92,26 @@ describe("Auth Controller", () => {
   });
 
   it("POST /auth/login returns 401 on invalid credentials", async () => {
-  authServiceMock.login.mockRejectedValue(
-    new AuthError(AuthErrorCode.INVALID_CREDENTIALS)
-  );
+    authServiceMock.login.mockRejectedValue(
+      new AuthError(AuthErrorCode.INVALID_CREDENTIALS)
+    );
 
-  const app = buildTestApp(authServiceMock);
+    const app = buildTestApp(authServiceMock);
 
-  const res = await app.inject({
-    method: "POST",
-    url: "/auth/login",
-    payload: {
-      email: "bad@test.com",
-      password: "wrong",
-    },
+    const res = await app.inject({
+      method: "POST",
+      url: "/auth/login",
+      payload: {
+        email: "bad@test.com",
+        password: "wrong",
+      },
+    });
+
+    expect(res.statusCode).toBe(401);
+    expect(JSON.parse(res.body)).toEqual({
+      error: "INVALID_CREDENTIALS",
+    });
   });
-
-  expect(res.statusCode).toBe(401);
-  expect(JSON.parse(res.body)).toEqual({
-    error: "INVALID_CREDENTIALS",
-  });
-});
 
   it("POST /auth/refresh reads refresh token from cookie", async () => {
     authServiceMock.refresh.mockResolvedValue({
