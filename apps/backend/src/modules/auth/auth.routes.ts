@@ -7,8 +7,9 @@ import {
   refreshSchema,
   registerSchema,
 } from "./auth.schema.js";
-import { authenticate } from "../../plugins/authenticate.js";
 import { csrfGuard } from "../../plugins/csrf.js";
+import { authRepository } from "./auth.repository.js";
+import { JwtTokenService } from "../../plugins/jwt-token.service.js";
 
 type AuthRoutesOptions = {
   authService?: AuthService;
@@ -18,7 +19,12 @@ export async function authRoutes(
   app: FastifyInstance,
   opts: AuthRoutesOptions
 ) {
-  const authService = opts?.authService || new AuthService();
+  const tokenService = new JwtTokenService(app.jwt, {
+    accessTokenTtl: "15m",
+  });
+
+  const authService = opts.authService || new AuthService(authRepository, tokenService);
+
   const controller = buildAuthController(authService);
 
   app.post(
@@ -41,7 +47,7 @@ export async function authRoutes(
       preHandler: [app.authenticate, csrfGuard],
       schema: refreshSchema,
     },
-    controller.refreshToken
+    controller.refresh
   );
 
   app.post(

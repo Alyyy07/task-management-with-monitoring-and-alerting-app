@@ -1,67 +1,60 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { AuthService } from "./auth.service.js";
-import { LoginBody, RegisterBody } from "./auth.types.js";
+
+const refreshCookieOptions = {
+  httpOnly: true,
+  sameSite: "strict" as const,
+  path: "/auth",
+};
 
 export function buildAuthController(authService: AuthService) {
   return {
-    async register(
-      req: FastifyRequest<{ Body: RegisterBody }>,
-      reply: FastifyReply
-    ) {
-      const { email, password } = req.body;
+    async register(req:FastifyRequest, reply:FastifyReply) {
+      const { email, password } = req.body as { email: string; password: string };
       const user = await authService.register(email, password);
       return reply.status(201).send(user);
     },
 
-    async login(req: FastifyRequest<{ Body: LoginBody }>, reply: FastifyReply) {
-      const { email, password } = req.body;
-      const { user, refreshToken, csrfToken } = await authService.login(
+    async login(req:FastifyRequest, reply:FastifyReply) {
+      const { email, password } = req.body as { email: string; password: string };
+      const { accessToken, refreshToken, csrfToken } = await authService.login(
         email,
         password
       );
 
-      const accessToken = req.server.jwt.sign(
-        { userId: user.id },
-        { expiresIn: "15m" }
-      );
-
       return reply
-        .setCookie("refreshToken", refreshToken, {
-          httpOnly: true,
-          sameSite: "strict",
-          path: "/auth",
-        })
+        .setCookie("refreshToken", refreshToken, refreshCookieOptions)
         .send({ accessToken, csrfToken });
     },
 
-    async logout(req: FastifyRequest, reply: FastifyReply) {
-      const { refreshToken } = req.body as { refreshToken: string };
-
-      await authService.revokeRefreshToken(refreshToken);
+    async logout(req:FastifyRequest, reply:FastifyReply) {
+      const refreshToken = req.cookies.refreshToken;
+      if (refreshToken) {
+        try {
+          await authService.revokeRefreshToken(refreshToken);
+        } catch {
+          req.log.warn("Failed to revoke refresh token on logout");
+        }
+      }
 
       return reply
-        .status(204)
         .clearCookie("refreshToken", { path: "/auth" })
-        .send({ success: true });
+        .status(204)
+        .send();
     },
 
-    async refreshToken(req: FastifyRequest, reply: FastifyReply) {
-      const { refreshToken } = req.body as { refreshToken: string };
-      const { userId, newRefresh } = await authService.refreshToken(
-        refreshToken
-      );
+    async refresh(req:FastifyRequest, reply:FastifyReply) {
+      const refreshToken = req.cookies.refreshToken;
+      if (!refreshToken) {
+        return reply.status(401).send({ error: "Missing refresh token" });
+      }
 
-      const accessToken = req.server.jwt.sign({ userId }, { expiresIn: "15m" });
+      const { accessToken, refreshToken: newRefresh } =
+        await authService.refresh(refreshToken);
 
-      reply
-        .setCookie("refreshToken", newRefresh, {
-          httpOnly: true,
-          sameSite: "strict",
-          path: "/auth",
-        })
-        .send({
-          accessToken,
-        });
+      return reply
+        .setCookie("refreshToken", newRefresh, refreshCookieOptions)
+        .send({ accessToken });
     },
   };
 }
