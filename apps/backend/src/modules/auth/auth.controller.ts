@@ -9,14 +9,20 @@ const refreshCookieOptions = {
 
 export function buildAuthController(authService: AuthService) {
   return {
-    async register(req:FastifyRequest, reply:FastifyReply) {
-      const { email, password } = req.body as { email: string; password: string };
+    async register(req: FastifyRequest, reply: FastifyReply) {
+      const { email, password } = req.body as {
+        email: string;
+        password: string;
+      };
       const user = await authService.register(email, password);
       return reply.status(201).send(user);
     },
 
-    async login(req:FastifyRequest, reply:FastifyReply) {
-      const { email, password } = req.body as { email: string; password: string };
+    async login(req: FastifyRequest, reply: FastifyReply) {
+      const { email, password } = req.body as {
+        email: string;
+        password: string;
+      };
       const { accessToken, refreshToken, csrfToken } = await authService.login(
         email,
         password
@@ -27,7 +33,7 @@ export function buildAuthController(authService: AuthService) {
         .send({ accessToken, csrfToken });
     },
 
-    async logout(req:FastifyRequest, reply:FastifyReply) {
+    async logout(req: FastifyRequest, reply: FastifyReply) {
       const refreshToken = req.cookies.refreshToken;
       if (refreshToken) {
         try {
@@ -43,7 +49,7 @@ export function buildAuthController(authService: AuthService) {
         .send();
     },
 
-    async refresh(req:FastifyRequest, reply:FastifyReply) {
+    async refresh(req: FastifyRequest, reply: FastifyReply) {
       const refreshToken = req.cookies.refreshToken;
       if (!refreshToken) {
         return reply.status(401).send({ error: "Missing refresh token" });

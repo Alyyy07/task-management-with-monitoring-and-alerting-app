@@ -11,14 +11,16 @@ import { membershipRoutes } from "./modules/membership/membership.route.js";
 import { metricsPlugin } from "./plugins/metrics.js";
 import { testRoutes } from "./modules/tes/tes.route.js";
 import "./metrics/db.js";
-import { AppError } from "./utils/app.error.js";
 import fastifyCookie from "@fastify/cookie";
+import { registerErrorHandler } from "./plugins/error-handler.plugin.js";
 
 const app = fastify({
   logger: {
     level: "info",
   },
 });
+
+registerErrorHandler(app);
 
 app.register(helmet);
 app.register(fastifyCookie);
@@ -45,23 +47,6 @@ app.get("/health", async () => ({
   status: "ok",
   uptime: process.uptime(),
 }));
-
-app.setErrorHandler((error, request, reply) => {
-  if (error instanceof AppError) {
-    return reply
-      .status(error.statusCode)
-      .send({ error: error.code, message: error.message });
-  }
-  
-  if (typeof error === "object" && error !== null && "statusCode" in error && "message" in error) {
-    return reply.status((error as any).statusCode).send({
-      message: (error as any).message,
-    });
-  }
-
-  request.log.error(error);
-  reply.status(500).send({ error: "Internal Server Error" });
-});
 
 process.on("SIGTERM", async () => {
   app.log.info("SIGTERM received, shutting down gracefully...");
