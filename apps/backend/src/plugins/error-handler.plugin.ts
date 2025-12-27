@@ -37,6 +37,8 @@ function handleAuthError(error: AuthError, reply: FastifyReply) {
       return reply.status(401).send({ error: error.code });
     case AuthErrorCode.NO_TOKEN:
       return reply.status(401).send({ error: error.code });
+    case AuthErrorCode.NO_REFRESH_TOKEN:
+      return reply.status(403).send({ error: error.code });
     case AuthErrorCode.CSRF_REQUIRED:
       return reply.status(403).send({ error: error.code });
     case AuthErrorCode.INVALID_CSRF_TOKEN:

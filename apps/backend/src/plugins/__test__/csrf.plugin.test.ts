@@ -66,7 +66,7 @@ it("returns 403 if refresh cookie is missing", async () => {
 
   expect(res.statusCode).toBe(403);
   expect(JSON.parse(res.body)).toEqual({
-    error: "CSRF_REQUIRED",
+    error: "NO_REFRESH_TOKEN",
   });
 });
 
