@@ -9,12 +9,12 @@ import Fastify from "fastify";
 import { describe, it, expect, beforeEach } from "vitest";
 import { authenticate } from "../authenticate.js";
 import { registerErrorHandler } from "../error-handler.plugin.js";
-import { sign } from "node:crypto";
 
 function buildApp() {
   const app = Fastify({ logger: false });
+  (app as any).tokenService = tokenServiceMock;
 
-  app.register(authenticate(tokenServiceMock));
+  app.register(authenticate);
   registerErrorHandler(app);
 
   app.get(

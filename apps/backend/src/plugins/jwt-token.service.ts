@@ -1,5 +1,5 @@
-import app from "../app.js";
 import { TokenService } from "../modules/auth/auth.types.js";
+import fp from "fastify-plugin";
 
 export type JwtSigner = {
   sign(payload: object, options?: { expiresIn?: string | number }): string;
@@ -10,7 +10,7 @@ type JwtTokenServiceOptions = {
   accessTokenTtl: string | number;
 };
 
-export class JwtTokenService implements TokenService {
+class JwtTokenService implements TokenService {
   constructor(
     private readonly signer: JwtSigner,
     private readonly options: JwtTokenServiceOptions
@@ -24,10 +24,15 @@ export class JwtTokenService implements TokenService {
   }
 
   verifyAccessToken(token: string): { userId: string } {
+    console.log("Verifying token:", token);
     return this.signer.verify(token) as { userId: string };
   }
 }
 
-export const tokenService = new JwtTokenService(app.jwt, {
-  accessTokenTtl: "15m",
+export const tokenServicePlugin = fp(async (app) => {
+  const tokenService = new JwtTokenService(app.jwt, {
+    accessTokenTtl: "15m",
+  });
+
+  app.decorate("tokenService", tokenService);
 });
