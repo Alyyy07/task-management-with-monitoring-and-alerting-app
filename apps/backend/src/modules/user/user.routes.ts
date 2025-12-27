@@ -1,9 +1,16 @@
 import { FastifyInstance } from "fastify";
+import { UserService } from "./user.service.js";
+import { buildUserController } from "./user.controller.js";
+import { userRepository } from "./user.repository.js";
 
-export async function userRoutes(app: FastifyInstance) {
-  app.get("/profile", { preHandler: app.authenticate }, async (request) => {
-    return {
-      userId: request.user.userId,
-    };
-  });
+type UserRoutesOptions = {
+  userService: UserService;
+};
+
+export async function userRoutes(app: FastifyInstance,opts:UserRoutesOptions) {
+  const userService = opts.userService || new UserService(userRepository);
+
+  const controller = buildUserController(userService);
+
+  app.get("/:id", { preHandler: app.authenticate }, controller.getProfile);
 }
