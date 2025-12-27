@@ -3,10 +3,7 @@ import { AccessTokenPayload } from "../modules/auth/auth.types.ts";
 
 declare module "fastify" {
   interface FastifyInstance {
-    authenticate(
-      request: FastifyRequest,
-      reply: FastifyReply
-    ): Promise<void>;
+    authenticate: (req: FastifyRequest) => Promise<void>;
   }
   interface FastifyRequest{
     user?:{

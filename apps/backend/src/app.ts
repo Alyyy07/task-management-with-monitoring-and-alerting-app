@@ -13,6 +13,7 @@ import { testRoutes } from "./modules/tes/tes.route.js";
 import "./metrics/db.js";
 import fastifyCookie from "@fastify/cookie";
 import { registerErrorHandler } from "./plugins/error-handler.plugin.js";
+import { tokenService } from "./plugins/jwt-token.service.js";
 
 const app = fastify({
   logger: {
@@ -35,7 +36,7 @@ app.register(rateLimit, {
 app.register(metricsPlugin);
 app.register(configPlugin);
 app.register(jwtPlugin);
-app.register(authenticate);
+app.register(authenticate(tokenService));
 
 app.register(testRoutes);
 app.register(authRoutes, { prefix: "/auth" });

@@ -1,3 +1,4 @@
+import app from "../app.js";
 import { TokenService } from "../modules/auth/auth.types.js";
 
 export type JwtSigner = {
@@ -26,3 +27,7 @@ export class JwtTokenService implements TokenService {
     return this.signer.verify(token) as { userId: string };
   }
 }
+
+export const tokenService = new JwtTokenService(app.jwt, {
+  accessTokenTtl: "15m",
+});
