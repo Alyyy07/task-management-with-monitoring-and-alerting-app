@@ -1,56 +1,96 @@
-import { prisma } from "../../libs/prisma.js";
-import { comparePassword } from "../../utils/password.js";
 import crypto from "crypto";
+import { prisma } from "../../libs/prisma.js";
+import { AuthRepository } from "./auth.types.js";
 
-export const authRepository = {
-  findByEmail(email: string) {
-    return prisma.user.findUnique({
-      where: { email },
-    });
+function hashToken(raw: string) {
+  return crypto.createHash("sha256").update(raw).digest("hex");
+}
+
+export const authRepository: AuthRepository = {
+  findByEmail(email) {
+    return prisma.user.findUnique({ where: { email } });
   },
 
-  createUser(email: string, hashedPassword: string) {
+  createUser(email, hashedPassword) {
     return prisma.user.create({
-      data: {
-        email,
-        password: hashedPassword,
-      },
+      data: { email, password: hashedPassword },
     });
   },
 
-  async createRefreshToken(userId: string) {
-    const raw = crypto.randomBytes(64).toString("hex");
-    const hash = crypto.createHash("sha256").update(raw).digest("hex");
-
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-
+  async storeRefreshToken(userId, rawToken, expiresAt) {
     await prisma.refreshToken.create({
       data: {
-        tokenHash: hash,
         userId,
+        token: hashToken(rawToken),
         expiresAt,
       },
     });
-
-    return raw;
   },
 
-  async findValidRefreshToken(rawToken: string) {
-    const hash = crypto.createHash("sha256").update(rawToken).digest("hex");
-
+  async findValidRefreshToken(rawToken) {
     return prisma.refreshToken.findFirst({
       where: {
-        tokenHash: hash,
+        token: hashToken(rawToken),
         revoked: false,
         expiresAt: { gt: new Date() },
+      },
+      select: {
+        id: true,
+        userId: true,
       },
     });
   },
 
-  async revokeRefreshToken(id: string) {
-    return prisma.refreshToken.update({
+  async revokeRefreshToken(id) {
+    await prisma.refreshToken.update({
       where: { id },
       data: { revoked: true },
     });
   },
+
+  async revokeAllRefreshTokens(userId) {
+    await prisma.refreshToken.updateMany({
+      where: { userId, revoked: false },
+      data: { revoked: true },
+    });
+  },
+
+  async storeCsrfToken(userId, rawToken, expiresAt) {
+    await prisma.csrfToken.create({
+      data: {
+        userId,
+        token: hashToken(rawToken),
+        expiresAt,
+      },
+    });
+  },
+
+  async revokeCsrfTokens(userId) {
+    await prisma.csrfToken.deleteMany({
+      where: { userId },
+    });
+  },
+
+  async validateCsrfToken(refreshToken: string, rawCsrf: string) {
+  const storedRefresh = await prisma.refreshToken.findFirst({
+    where: {
+      token: hashToken(refreshToken),
+      revoked: false,
+      expiresAt: { gt: new Date() },
+    },
+  });
+
+  if (!storedRefresh) return false;
+
+  const csrf = await prisma.csrfToken.findFirst({
+    where: {
+      userId: storedRefresh.userId,
+      token: hashToken(rawCsrf),
+      expiresAt: { gt: new Date() },
+    },
+  });
+
+  return Boolean(csrf);
+}
+
 };

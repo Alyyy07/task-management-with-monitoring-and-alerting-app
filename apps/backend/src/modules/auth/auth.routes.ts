@@ -1,6 +1,12 @@
 import { FastifyInstance } from "fastify";
 import { buildAuthController } from "./auth.controller.js";
 import { AuthService } from "./auth.service.js";
+import {
+  loginSchema,
+  registerSchema,
+} from "./auth.schema.js";
+import { csrfGuard } from "../../plugins/csrf.js";
+import { authRepository } from "./auth.repository.js";
 
 type AuthRoutesOptions = {
   authService?: AuthService;
@@ -10,11 +16,40 @@ export async function authRoutes(
   app: FastifyInstance,
   opts: AuthRoutesOptions
 ) {
-  const authService = opts?.authService || new AuthService();
+    const tokenService = app.tokenService;
+
+  const authService =
+    opts.authService || new AuthService(authRepository, tokenService);
+
   const controller = buildAuthController(authService);
 
-  app.post("/login", controller.login);
-  app.post("/register", controller.register);
-  app.post("/refresh", controller.refreshToken);
-  app.post("/logout", controller.logout);
+  app.post(
+    "/login",
+    {
+      schema: loginSchema,
+    },
+    controller.login
+  );
+  app.post(
+    "/register",
+    {
+      schema: registerSchema,
+    },
+    controller.register
+  );
+  app.post(
+    "/refresh",
+    {
+      preHandler: [app.authenticate, csrfGuard],
+    },
+    controller.refresh
+  );
+
+  app.post(
+    "/logout",
+    {
+      preHandler: [app.authenticate, csrfGuard],
+    },
+    controller.logout
+  );
 }

@@ -1,13 +1,17 @@
-export type AuthErrorCode =
-  | "USER_EXISTS"
-  | "INVALID_CREDENTIALS"
-  | "INVALID_REFRESH_TOKEN";
-
+export enum AuthErrorCode {
+  USER_EXISTS = "USER_EXISTS",
+  INVALID_CREDENTIALS = "INVALID_CREDENTIALS",
+  INVALID_REFRESH_TOKEN = "INVALID_REFRESH_TOKEN",
+  INVALID_ACCESS_TOKEN = "INVALID_ACCESS_TOKEN",
+  UNAUTHORIZED = "UNAUTHORIZED",
+  NO_TOKEN = "NO_TOKEN",
+  NO_REFRESH_TOKEN = "NO_REFRESH_TOKEN",
+  CSRF_REQUIRED = "CSRF_REQUIRED",
+  INVALID_CSRF_TOKEN = "INVALID_CSRF_TOKEN",
+}
 export class AuthError extends Error {
-  code: AuthErrorCode;
-
-  constructor(code: AuthErrorCode) {
+  constructor(public code: AuthErrorCode) {
     super(code);
-    this.code = code;
+    this.name = "AuthError";
   }
 }
