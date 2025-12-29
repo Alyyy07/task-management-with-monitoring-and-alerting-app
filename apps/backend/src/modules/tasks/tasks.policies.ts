@@ -1,37 +1,34 @@
 import { AuthzError, AuthzErrorCode } from "../authz/authz.errors.js";
-import { OrganizationRepository } from "../organization/organization.type.js";
 
+export type TaskPolicyContext = {
+  actorId: string;
+  role: "OWNER" | "ADMIN" | "MEMBER";
+};
 
-export async function requireCanAssignTasks(
-  actorId: string,
-  organizationId: string,
-  orgRepo: OrganizationRepository
-) {
-  const membership = await orgRepo.getMembership(actorId, organizationId);
+export type TaskEntity = {
+  ownerId: string;
+  assigneeId?: string | null;
+};
 
-  if (membership.status === "NOT_FOUND") {
-    throw new AuthzError(AuthzErrorCode.NOT_FOUND);
-  }
-
-  if (membership.status === "NOT_MEMBER") {
-    throw new AuthzError(AuthzErrorCode.NOT_MEMBER);
-  }
-
-  if (membership.role === "MEMBER") {
-    throw new AuthzError(AuthzErrorCode.INSUFFICIENT_ROLE);
-  }
+export function canCreateTask(ctx: TaskPolicyContext) {
+  return ctx.role !== "MEMBER";
 }
 
-export async function requireUserIsOrgMember(
-  userId: string,
-  organizationId: string,
-  orgRepo: OrganizationRepository
+export function canUpdateTask(
+  ctx: TaskPolicyContext,
+  task: TaskEntity
 ) {
-  const membership = await orgRepo.getMembership(userId, organizationId);
+  return ctx.role === "OWNER" || task.ownerId === ctx.actorId;
+}
 
-  if (membership.status !== "MEMBER") {
-    throw new AuthzError(AuthzErrorCode.INVALID_ASSIGNEE);
-  }
+export function canDeleteTask(
+  ctx: TaskPolicyContext
+) {
+  return ctx.role === "OWNER";
+}
+
+export function canAssignTask(ctx: TaskPolicyContext) {
+  return ctx.role === "OWNER" || ctx.role === "ADMIN";
 }
 
 export function requirePolicy(

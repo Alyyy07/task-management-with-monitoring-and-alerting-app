@@ -4,6 +4,7 @@ export enum AuthzErrorCode {
   NOT_FOUND = "NOT_FOUND",
   INSUFFICIENT_ROLE = "INSUFFICIENT_ROLE",
   INVALID_ASSIGNEE = "INVALID_ASSIGNEE",
+  NOT_ALLOWED = "NOT_ALLOWED",
 }
 
 export const AuthzErrorStatus: Record<AuthzErrorCode, number> = {
@@ -12,6 +13,7 @@ export const AuthzErrorStatus: Record<AuthzErrorCode, number> = {
   [AuthzErrorCode.NOT_FOUND]: 404,
   [AuthzErrorCode.INSUFFICIENT_ROLE]: 403,
   [AuthzErrorCode.INVALID_ASSIGNEE]: 400,
+  [AuthzErrorCode.NOT_ALLOWED]: 403,
 };
 
 export class AuthzError extends Error {

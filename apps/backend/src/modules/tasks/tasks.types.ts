@@ -15,6 +15,8 @@ export interface TaskRepository {
 export interface Task {
   id: string;
   title: string;
+  projectId: string;
+  
   description?: string;
   organizationId: string;
   createdBy: string;
@@ -23,6 +25,7 @@ export interface Task {
 }
 export interface CreateTaskInput {
   title: string;
+  projectId: string;
   description?: string;
   organizationId: string;
   createdBy: string;
