@@ -1,34 +1,19 @@
-import { prisma } from "../../libs/prisma.js";
-import { createAuditLog } from "../audit/audit.service.js";
+import { requireOrgMember } from "../authz/authz.guard.js";
+import { AuthContext } from "../authz/authz.type.js";
+import { OrganizationRepository } from "./organization.type.js";
 
-export async function createOrganization(userId: string, name: string) {
-  const org = await prisma.organization.create({
-    data: {
-      name,
-      memberships: {
-        create: {
-          userId,
-          role: "OWNER"
-        }
-      }
-    }
-  });
+export class OrganizationService {
+  constructor(
+    private readonly organizationRepository: OrganizationRepository
+  ) {}
 
-  await createAuditLog({
-    userId,
-    action:"CREATE_ORGANIZATION",
-    organizationId: org.id
-  });
+  async getOrganization(context: AuthContext, organizationId: string) {
+    await requireOrgMember(
+      context,
+      organizationId,
+      this.organizationRepository.isMember.bind(this.organizationRepository)
+    );
 
-  return org;
-}
-
-export async function listOrganizations(userId: string) {
-  return prisma.organization.findMany({
-    where: {
-      memberships: {
-        some: { userId }
-      }
-    }
-  });
+    return this.organizationRepository.findById(organizationId);
+  }
 }
