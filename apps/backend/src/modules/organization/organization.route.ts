@@ -1,22 +1,18 @@
-import { FastifyInstance, FastifyRequest } from "fastify";
-import {
-  createOrganization,
-  listOrganizations,
-} from "./organization.service.js";
-import { createOrgSchema } from "./organization.schema.js";
-import { csrfGuard } from "../../plugins/csrf.js";
+import { FastifyInstance } from "fastify";
+import { OrganizationService } from "./organization.service.js";
+import { organizationRepository } from "./organization.repository.js";
+import { buildOrganizationController } from "./organization.controller.js";
 
-export async function organizationRoutes(app: FastifyInstance) {
-  app.post(
-    "/",
-    { preHandler: [app.authenticate,csrfGuard], schema: createOrgSchema },
-    async (request: FastifyRequest) => {
-      const { name } = request.body as { name: string };
-      return createOrganization(request.user.userId, name);
-    }
+type OrganizationRoutesOptions = {
+  organizationService: OrganizationService;
+};
+export async function organizationRoutes(app: FastifyInstance,opts:OrganizationRoutesOptions) {
+  const organizationService = opts.organizationService || new OrganizationService(organizationRepository);
+  const controller = buildOrganizationController(organizationService);
+
+  app.get(
+    "/:id",
+    { preHandler: app.authenticate },
+    controller.getOrganization
   );
-
-  app.get("/", { preHandler: [app.authenticate] }, async (request) => {
-    return listOrganizations(request.user.userId);
-  });
 }
