@@ -1,10 +1,7 @@
-import { AuthzErrorCode } from "./authz.errors.js";
-import { AuthzError } from "./authz.errors.js";
+import { MembershipCheckResult } from "../organization/organization.type.js";
+import { AuthzErrorCode, AuthzError } from "./authz.errors.js";
 
-export function requireSelf(
-  context: { userId: string },
-  targetUserId: string
-) {
+export function requireSelf(context: { userId: string }, targetUserId: string) {
   if (context.userId !== targetUserId) {
     throw new AuthzError(AuthzErrorCode.NOT_OWNER);
   }
@@ -13,16 +10,44 @@ export function requireSelf(
 export type MembershipChecker = (
   userId: string,
   orgId: string
-) => Promise<boolean>;
+) => Promise<MembershipCheckResult>;
 
 export async function requireOrgMember(
   context: { userId: string },
-  orgId: string,
-  isMember: MembershipChecker
+  organizationId: string,
+  check: (
+    userId: string,
+    organizationId: string
+  ) => Promise<MembershipCheckResult>
 ) {
-  const allowed = await isMember(context.userId, orgId);
+  const result = await check(context.userId, organizationId);
 
-  if (!allowed) {
+  if (result === "NOT_FOUND") {
+    throw new AuthzError(AuthzErrorCode.NOT_FOUND);
+  }
+
+  if (result === "NOT_MEMBER") {
     throw new AuthzError(AuthzErrorCode.NOT_MEMBER);
+  }
+}
+
+export type TaskOwnershipChecker = (
+  userId: string,
+  taskId: string
+) => Promise<"OWNER" | "NOT_OWNER" | "NOT_FOUND">;
+
+export async function requireTaskOwner(
+  context: { userId: string },
+  taskId: string,
+  check: TaskOwnershipChecker
+) {
+  const result = await check(context.userId, taskId);
+
+  if (result === "NOT_FOUND") {
+    throw new AuthzError(AuthzErrorCode.NOT_FOUND);
+  }
+
+  if (result === "NOT_OWNER") {
+    throw new AuthzError(AuthzErrorCode.NOT_FOUND);
   }
 }
