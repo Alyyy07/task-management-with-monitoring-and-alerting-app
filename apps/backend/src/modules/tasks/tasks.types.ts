@@ -1,7 +1,11 @@
 export interface TaskRepository {
   findById(id: string): Promise<Task | null>;
   findByOrganization(orgId: string): Promise<Task[]>;
-  isOwner(userId: string, taskId: string): Promise<boolean>;
+  isOwner(
+    userId: string,
+    taskId: string
+  ): Promise<"OWNER" | "NOT_OWNER" | "NOT_FOUND">;
+
   create(data: CreateTaskInput): Promise<Task>;
   update(id: string, data: UpdateTaskInput): Promise<Task>;
   delete(id: string): Promise<void>;

@@ -25,16 +25,16 @@ export const taskRepository: TaskRepository = {
   },
 
   async isOwner(userId: string, taskId: string) {
-    const task = await prisma.task.findFirst({
-      where: {
-        id: taskId,
-        ownerId: userId,
-      },
+    const task = await prisma.task.findUnique({
+      where: { id: taskId },
+      select: { ownerId: true },
     });
 
-    return Boolean(task);
-  },
+    if (!task) return "NOT_FOUND";
+    if (task.ownerId !== userId) return "NOT_OWNER";
 
+    return "OWNER";
+  },
   async create(data) {
     return prisma.task.create({
       data,

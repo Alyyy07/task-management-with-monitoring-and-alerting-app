@@ -26,16 +26,20 @@ export async function requireOrgMember(
 export type TaskOwnershipChecker = (
   userId: string,
   taskId: string
-) => Promise<boolean>;
+) => Promise<"OWNER" | "NOT_OWNER" | "NOT_FOUND">;
 
 export async function requireTaskOwner(
   context: { userId: string },
   taskId: string,
-  isOwner: TaskOwnershipChecker
+  check: TaskOwnershipChecker
 ) {
-  const allowed = await isOwner(context.userId, taskId);
+  const result = await check(context.userId, taskId);
 
-  if (!allowed) {
-    throw new AuthzError(AuthzErrorCode.NOT_OWNER);
+  if (result === "NOT_FOUND") {
+    throw new AuthzError(AuthzErrorCode.NOT_FOUND);
+  }
+
+  if (result === "NOT_OWNER") {
+    throw new AuthzError(AuthzErrorCode.NOT_FOUND);
   }
 }
