@@ -12,5 +12,5 @@ export async function userRoutes(app: FastifyInstance,opts:UserRoutesOptions) {
 
   const controller = buildUserController(userService);
 
-  app.get("/:id", { preHandler: app.authenticate }, controller.getProfile);
+  app.get("/:id", { preHandler: app.authenticate }, controller.getUserById);
 }

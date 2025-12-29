@@ -5,9 +5,13 @@ import { UserRepository } from "./user.types.js";
 export class UserService {
   constructor(private readonly userRepository: UserRepository) {}
 
-  async getUserProfile(context: AuthContext, userId: string) {
-    requireSelf(context, userId);
+  async getUserById(context: AuthContext, targetUserId: string) {
+    requireSelf(context, targetUserId);
 
-    return this.userRepository.findById(userId);
+    return this.userRepository.findById(targetUserId);
+  }
+
+  async getUserProfile(context: AuthContext) {
+    return this.userRepository.findById(context.userId);
   }
 }
