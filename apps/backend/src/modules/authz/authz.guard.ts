@@ -1,3 +1,4 @@
+import { MembershipCheckResult } from "../organization/organization.type.js";
 import { AuthzErrorCode, AuthzError } from "./authz.errors.js";
 
 export function requireSelf(context: { userId: string }, targetUserId: string) {
@@ -9,16 +10,23 @@ export function requireSelf(context: { userId: string }, targetUserId: string) {
 export type MembershipChecker = (
   userId: string,
   orgId: string
-) => Promise<boolean>;
+) => Promise<MembershipCheckResult>;
 
 export async function requireOrgMember(
   context: { userId: string },
-  orgId: string,
-  isMember: MembershipChecker
+  organizationId: string,
+  check: (
+    userId: string,
+    organizationId: string
+  ) => Promise<MembershipCheckResult>
 ) {
-  const allowed = await isMember(context.userId, orgId);
+  const result = await check(context.userId, organizationId);
 
-  if (!allowed) {
+  if (result === "NOT_FOUND") {
+    throw new AuthzError(AuthzErrorCode.NOT_FOUND);
+  }
+
+  if (result === "NOT_MEMBER") {
     throw new AuthzError(AuthzErrorCode.NOT_MEMBER);
   }
 }
