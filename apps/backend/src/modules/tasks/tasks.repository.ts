@@ -1,4 +1,5 @@
 import { prisma } from "../../libs/prisma.js";
+import { AuthzError, AuthzErrorCode } from "../authz/authz.errors.js";
 import { TaskRepository } from "./tasks.types.js";
 
 export const taskRepository: TaskRepository = {
@@ -52,5 +53,20 @@ export const taskRepository: TaskRepository = {
     await prisma.task.delete({
       where: { id },
     });
+  },
+
+  async assignTask(taskId: string, assigneeId: string) {
+    try {
+      await prisma.task.update({
+        where: { id: taskId },
+        data: { assigneeId },
+      });
+    } catch (err: any) {
+      if (err.code === "P2025") {
+        throw new AuthzError(AuthzErrorCode.NOT_FOUND);
+        
+      }
+      throw err;
+    }
   },
 };

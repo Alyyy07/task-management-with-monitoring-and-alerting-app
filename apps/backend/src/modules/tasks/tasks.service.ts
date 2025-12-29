@@ -1,8 +1,9 @@
+import { requireCanAssignTasks } from "../../utils/requireTaskAssignmentPermission.js";
+import { requireUserIsOrgMember } from "../../utils/requireValidateAssignee.js";
 import { requireOrgMember, requireTaskOwner } from "../authz/authz.guard.js";
 import { AuthContext } from "../authz/authz.type.js";
 import { OrganizationRepository } from "../organization/organization.type.js";
 import { TaskRepository } from "./tasks.types.js";
-
 
 export class TaskService {
   constructor(
@@ -10,10 +11,7 @@ export class TaskService {
     private readonly organizationRepository: OrganizationRepository
   ) {}
 
-  async listTasks(
-    context: AuthContext,
-    organizationId: string
-  ) {
+  async listTasks(context: AuthContext, organizationId: string) {
     await requireOrgMember(
       context,
       organizationId,
@@ -23,7 +21,7 @@ export class TaskService {
     return this.taskRepository.findByOrganization(organizationId);
   }
 
-    async create(
+  async create(
     context: AuthContext,
     data: { title: string; description?: string; organizationId: string }
   ) {
@@ -35,7 +33,7 @@ export class TaskService {
 
     return this.taskRepository.create({
       ...data,
-      ownerId: context.userId,
+      createdBy: context.userId,
     });
   }
 
@@ -61,5 +59,31 @@ export class TaskService {
     );
 
     await this.taskRepository.delete(taskId);
+  }
+
+  async assignTask(
+    context: { userId: string },
+    input: {
+      taskId: string;
+      organizationId: string;
+      assigneeId: string;
+    }
+  ) {
+    await requireCanAssignTasks(
+      context.userId,
+      input.organizationId,
+      this.organizationRepository
+    );
+
+    await requireUserIsOrgMember(
+      input.assigneeId,
+      input.organizationId,
+      this.organizationRepository
+    );
+
+    return this.taskRepository.assignTask(
+      input.taskId,
+      input.assigneeId
+    );
   }
 }

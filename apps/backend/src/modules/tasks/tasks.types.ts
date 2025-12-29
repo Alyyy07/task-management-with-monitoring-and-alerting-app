@@ -9,6 +9,7 @@ export interface TaskRepository {
   create(data: CreateTaskInput): Promise<Task>;
   update(id: string, data: UpdateTaskInput): Promise<Task>;
   delete(id: string): Promise<void>;
+  assignTask(taskId: string, assigneeId: string): Promise<void>;
 }
 
 export interface Task {
@@ -16,7 +17,7 @@ export interface Task {
   title: string;
   description?: string;
   organizationId: string;
-  ownerId: string;
+  createdBy: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -24,7 +25,7 @@ export interface CreateTaskInput {
   title: string;
   description?: string;
   organizationId: string;
-  ownerId: string;
+  createdBy: string;
 }
 export interface UpdateTaskInput {
   title?: string;
