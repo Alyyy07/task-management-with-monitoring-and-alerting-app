@@ -1,145 +1,38 @@
-import { requireActiveMembership } from "../auth/authz.membership.js";
-import { AuthzError, AuthzErrorCode } from "../authz/authz.errors.js";
-import { requireOrgMember, requireTaskOwner } from "../authz/authz.guard.js";
 import { AuthContext } from "../authz/authz.type.js";
-import { OrganizationRepository } from "../organization/organization.type.js";
-import {
-  canAssignTask,
-  canCreateTask,
-  canDeleteTask,
-  canUpdateTask,
-  requirePolicy,
-} from "./tasks.policies.js";
-import { TaskRepository } from "./tasks.types.js";
+import { TaskAuthz } from "./task.authz.js";
+import { TaskRepository, TaskStatus } from "./tasks.types.js";
 
+// tasks/tasks.service.ts
 export class TaskService {
   constructor(
-    private readonly taskRepository: TaskRepository,
-    private readonly organizationRepository: OrganizationRepository
+    private readonly repo: TaskRepository,
+    private readonly authz: TaskAuthz
   ) {}
 
-  async listTasks(context: AuthContext, organizationId: string) {
-    await requireOrgMember(
-      context,
-      organizationId,
-      this.organizationRepository.isMember.bind(this.organizationRepository)
-    );
-
-    return this.taskRepository.findByOrganization(organizationId);
+  async listByProject(context: AuthContext, projectId: string) {
+    return this.repo.findByProject(projectId);
   }
 
-  async createTask(
-    context: AuthContext,
-    data: {
-      title: string;
-      projectId: string;
-      description?: string;
-      organizationId: string;
-    }
-  ) {
-    const membership = await this.organizationRepository.getMembership(
-      context.userId,
-      data.organizationId
-    );
-
-    if (membership.status !== "MEMBER") {
-      throw new AuthzError(AuthzErrorCode.NOT_MEMBER);
-    }
-
-    requirePolicy(
-      canCreateTask({
-        actorId: context.userId,
-        role: membership.role,
-      }),
-      AuthzErrorCode.INSUFFICIENT_ROLE
-    );
-
-    return this.taskRepository.create({
+  async create(context: AuthContext, data:{ title: string; description: string; projectId: string }) {
+    return this.repo.create({
       ...data,
-      createdBy: context.userId,
+      createdById: context.userId,
+      status: "TODO",
     });
   }
 
-  async updateTask(
-    context: AuthContext,
-    taskId: string,
-    data: { title?: string; description?: string }
-  ) {
-    const task = await this.taskRepository.findById(taskId);
-    if (!task) {
-      throw new AuthzError(AuthzErrorCode.NOT_FOUND);
-    }
-
-    const membership = await this.organizationRepository.getMembership(
-      context.userId,
-      task.organizationId
-    );
-
-    const { role } = requireActiveMembership(membership);
-
-    requirePolicy(
-      canUpdateTask(
-        {
-          actorId: context.userId,
-          role,
-        },
-        { ownerId: task.createdBy }
-      ),
-      AuthzErrorCode.NOT_ALLOWED
-    );
-
-    return this.taskRepository.update(taskId, data);
+  async update(context: AuthContext, taskId: string, data:{ title?: string; description?: string; status?: TaskStatus }) {
+    await this.authz.requireUpdate(context, taskId);
+    return this.repo.update(taskId, data);
   }
 
-  async deleteTask(context: AuthContext, taskId: string) {
-    const task = await this.taskRepository.findById(taskId);
-    if (!task) {
-      throw new AuthzError(AuthzErrorCode.NOT_FOUND);
-    }
-
-    const membership = await this.organizationRepository.getMembership(
-      context.userId,
-      task.organizationId
-    );
-    const { role } = requireActiveMembership(membership);
-    requirePolicy(
-      canDeleteTask({
-        actorId: context.userId,
-        role,
-      }),
-      AuthzErrorCode.NOT_ALLOWED
-    );
-
-    await this.taskRepository.delete(taskId);
+  async delete(context: AuthContext, taskId: string) {
+    await this.authz.requireDelete(context, taskId);
+    await this.repo.delete(taskId);
   }
 
-  async assignTask(
-    context: AuthContext,
-    input: {
-      taskId: string;
-      organizationId: string;
-      assigneeId: string;
-    }
-  ) {
-    const membership = await this.organizationRepository.getMembership(
-      context.userId,
-      input.organizationId
-    );
-    const { role } = requireActiveMembership(membership);
-    requirePolicy(
-      canAssignTask({
-        actorId: context.userId,
-        role,
-      }),
-      AuthzErrorCode.INSUFFICIENT_ROLE
-    );
-
-    await requireOrgMember(
-      context,
-      input.organizationId,
-      this.organizationRepository.isMember.bind(this.organizationRepository)
-    );
-
-    return this.taskRepository.assignTask(input.taskId, input.assigneeId);
+  async assign(context: AuthContext, taskId: string, assigneeId: string) {
+    await this.authz.requireAssign(context, taskId);
+    return this.repo.assign(taskId, assigneeId);
   }
 }

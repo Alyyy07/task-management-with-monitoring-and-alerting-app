@@ -1,41 +1,56 @@
-import { AuthzError, AuthzErrorCode } from "../authz/authz.errors.js";
+// authz/task.policy.ts
+import { Membership } from "../organization/organization.type.js";
 
-export type TaskPolicyContext = {
-  actorId: string;
-  role: "OWNER" | "ADMIN" | "MEMBER";
-};
-
-export type TaskEntity = {
-  ownerId: string;
-  assigneeId?: string | null;
-};
-
-export function canCreateTask(ctx: TaskPolicyContext) {
-  return ctx.role !== "MEMBER";
-}
-
-export function canUpdateTask(
-  ctx: TaskPolicyContext,
-  task: TaskEntity
-) {
-  return ctx.role === "OWNER" || task.ownerId === ctx.actorId;
-}
-
-export function canDeleteTask(
-  ctx: TaskPolicyContext
-) {
-  return ctx.role === "OWNER";
-}
-
-export function canAssignTask(ctx: TaskPolicyContext) {
-  return ctx.role === "OWNER" || ctx.role === "ADMIN";
-}
-
-export function requirePolicy(
-  allowed: boolean,
-  error: AuthzErrorCode
-) {
-  if (!allowed) {
-    throw new AuthzError(error);
+export function taskPolicy(
+  context: { userId: string; isSuperAdmin?: boolean },
+  membership: Membership,
+  attrs: {
+    isCreator: boolean;
+    isAssignee: boolean;
+    isProjectCreator: boolean;
   }
+) {
+  if (context.isSuperAdmin) return allowAll();
+  if (membership.status !== "MEMBER") return denyAll();
+
+  if (membership.role === "OWNER") return allowAll();
+
+  if (membership.role === "ADMIN") {
+    return {
+      canRead: () => true,
+      canCreate: () => true,
+      canUpdate: () =>
+        attrs.isCreator || attrs.isAssignee || attrs.isProjectCreator,
+      canDelete: () => attrs.isProjectCreator,
+      canAssign: () => attrs.isProjectCreator,
+    };
+  }
+
+  return {
+    canRead: () => attrs.isCreator || attrs.isAssignee,
+    canCreate: () => true,
+    canUpdate: () => attrs.isCreator || attrs.isAssignee,
+    canDelete: () => attrs.isCreator,
+    canAssign: () => false,
+  };
+}
+
+function allowAll() {
+  return {
+    canRead: () => true,
+    canCreate: () => true,
+    canUpdate: () => true,
+    canDelete: () => true,
+    canAssign: () => true,
+  };
+}
+
+function denyAll() {
+  return {
+    canRead: () => false,
+    canCreate: () => false,
+    canUpdate: () => false,
+    canDelete: () => false,
+    canAssign: () => false,
+  };
 }
