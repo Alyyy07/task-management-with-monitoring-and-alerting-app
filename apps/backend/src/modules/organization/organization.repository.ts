@@ -1,34 +1,27 @@
 import { prisma } from "../../libs/prisma.js";
-import { OrganizationRepository } from "./organization.type.js";
+import { Membership } from "./organization.type.js";
 
-export const organizationRepository: OrganizationRepository = {
-  async isMember(userId: string, organizationId: string) {
-    const org = await prisma.organization.findUnique({
-      where: { id: organizationId },
-      select: {
-        members: {
-          where: { userId },
-          select: { userId: true },
-        },
-      },
-    });
-
-    if (!org) return "NOT_FOUND";
-    if (org.members.length === 0) return "NOT_MEMBER";
-
-    return "MEMBER";
-  },
-  async findById(id: string) {
-    return prisma.organization.findUnique({
-      where: { id },
-      select: {
-        id: true,
-        name: true,
-      },
-    });
+export const organizationRepository = {
+  findById(id: string) {
+    return prisma.organization.findUnique({ where: { id } });
   },
 
-  async getMembership(userId: string, organizationId: string) {
+  create(data: { name: string }) {
+    return prisma.organization.create({ data });
+  },
+
+  update(id: string, data: { name?: string }) {
+    return prisma.organization.update({ where: { id }, data });
+  },
+
+  delete(id: string) {
+    return prisma.organization.delete({ where: { id } });
+  },
+
+  async getMembership(
+    userId: string,
+    organizationId: string
+  ): Promise<Membership> {
     const membership = await prisma.membership.findUnique({
       where: {
         userId_organizationId: { userId, organizationId },
@@ -48,5 +41,32 @@ export const organizationRepository: OrganizationRepository = {
       status: "MEMBER",
       role: membership.role,
     };
+  },
+
+  addMember(userId: string, organizationId: string, role: "ADMIN" | "MEMBER") {
+    return prisma.membership.create({
+      data: { userId, organizationId, role },
+    });
+  },
+
+  removeMember(userId: string, organizationId: string) {
+    return prisma.membership.delete({
+      where: {
+        userId_organizationId: { userId, organizationId },
+      },
+    });
+  },
+
+  updateMemberRole(
+    userId: string,
+    organizationId: string,
+    role: "ADMIN" | "MEMBER"
+  ) {
+    return prisma.membership.update({
+      where: {
+        userId_organizationId: { userId, organizationId },
+      },
+      data: { role },
+    });
   },
 };
