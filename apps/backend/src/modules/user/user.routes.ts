@@ -4,7 +4,7 @@ import { buildUserController } from "./user.controller.js";
 import { userRepository } from "./user.repository.js";
 
 type UserRoutesOptions = {
-  userService: UserService;
+  userService?: UserService;
 };
 
 export async function userRoutes(app: FastifyInstance,opts:UserRoutesOptions) {

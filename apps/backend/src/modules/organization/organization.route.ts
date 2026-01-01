@@ -5,7 +5,7 @@ import { buildOrganizationController } from "./organization.controller.js";
 import { OrganizationAuthz } from "./organization.authz.js";
 
 type OrganizationRoutesOptions = {
-  organizationService: OrganizationService;
+  organizationService?: OrganizationService;
 };
 export async function organizationRoutes(app: FastifyInstance,opts:OrganizationRoutesOptions) {
   const orgAuthz = new OrganizationAuthz(organizationRepository);
