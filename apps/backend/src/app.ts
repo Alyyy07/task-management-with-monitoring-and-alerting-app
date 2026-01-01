@@ -43,7 +43,7 @@ app.register(testRoutes);
 app.register(authRoutes, { prefix: "/auth" });
 app.register(userRoutes, { prefix: "/users" });
 app.register(organizationRoutes, { prefix: "/organizations" });
-app.register(membershipRoutes, { prefix: "/organizations" });
+// app.register(membershipRoutes, { prefix: "/organizations" });
 
 app.get("/health", async () => ({
   status: "ok",
