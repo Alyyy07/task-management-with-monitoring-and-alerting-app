@@ -31,7 +31,7 @@ class JwtTokenService implements TokenService {
 
 export const tokenServicePlugin = fp(async (app) => {
   const tokenService = new JwtTokenService(app.jwt, {
-    accessTokenTtl: "15m",
+    accessTokenTtl: "1h",
   });
 
   app.decorate("tokenService", tokenService);
