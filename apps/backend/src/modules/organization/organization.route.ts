@@ -14,11 +14,15 @@ export async function organizationRoutes(app: FastifyInstance,opts:OrganizationR
 
   app.addHook("preHandler", app.authenticate);
 
+  app.get("/", controller.list);
   app.post("/", controller.create);
   app.get("/:orgId", controller.get);
   app.put("/:orgId", controller.update);
   app.delete("/:orgId", controller.delete);
 
+  app.get("/:orgId/members", controller.listMembers);
   app.post("/:orgId/members", controller.addMember);
+  app.put("/:orgId/members/:userId", controller.changeMemberRole);
   app.delete("/:orgId/members/:userId", controller.removeMember);
 }
+  

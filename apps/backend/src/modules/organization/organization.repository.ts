@@ -1,12 +1,12 @@
 import { prisma } from "../../libs/prisma.js";
-import { Membership } from "./organization.type.js";
+import { Membership, Organization, OrganizationRepository } from "./organization.type.js";
 
-export const organizationRepository = {
+export const organizationRepository:OrganizationRepository = {
   findById(id: string) {
     return prisma.organization.findUnique({ where: { id } });
   },
 
-  create(data: { name: string }) {
+  create(data: { name: string, createdById: string }) {
     return prisma.organization.create({ data });
   },
 
@@ -16,6 +16,26 @@ export const organizationRepository = {
 
   delete(id: string) {
     return prisma.organization.delete({ where: { id } });
+  },
+
+  async listOrgByUser(
+    userId: string,
+    isSuperAdmin: boolean
+  ): Promise<Organization[]> {
+    if (isSuperAdmin) {
+      return prisma.organization.findMany();
+    }
+    return prisma.organization.findMany({
+      where: {
+        memberships: { some: { userId } },
+      },
+    });
+  },
+
+  listMembers(orgId: string): Promise<Membership[]> {
+    return prisma.membership.findMany({
+      where: { organizationId: orgId },
+    });
   },
 
   async getMembership(
