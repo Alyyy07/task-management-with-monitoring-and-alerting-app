@@ -2,7 +2,7 @@ export interface ProjectRepository {
   create(data: {
     name: string;
     organizationId: string;
-    createdBy: string;
+    createdById: string;
   }): Promise<Project>;
 
   findById(id: string): Promise<Project | null>;

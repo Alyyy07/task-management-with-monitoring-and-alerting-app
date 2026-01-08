@@ -1,13 +1,17 @@
 // authz/project.policy.ts
-import { Membership } from "../organization/organization.type.js";
+import { Membership } from "../organization.type.js";
 
 export function projectPolicy(
   context: { userId: string; isSuperAdmin?: boolean },
-  membership: Membership,
+  membership: Membership | null,
   isCreator: boolean
 ) {
   if (context.isSuperAdmin) {
     return allowAll();
+  }
+
+  if (!membership) {
+    return denyAll();
   }
 
   if (membership.status !== "MEMBER") {

@@ -1,11 +1,11 @@
 // project/project.repository.ts
-import { prisma } from "../../libs/prisma.js";
+import { prisma } from "../../../libs/prisma.js";
 
 export const projectRepository = {
-  async create(data:{
+  async create(data: {
     name: string;
     organizationId: string;
-    createdBy: string;
+    createdById: string;
   }) {
     return prisma.project.create({ data });
   },

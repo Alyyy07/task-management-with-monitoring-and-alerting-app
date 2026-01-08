@@ -14,6 +14,7 @@ import "./metrics/db.js";
 import fastifyCookie from "@fastify/cookie";
 import { registerErrorHandler } from "./plugins/error-handler.plugin.js";
 import { tokenServicePlugin } from "./plugins/jwt-token.service.js";
+import { projectRoutes } from "./modules/organization/project/project.routes.js";
 
 const app = fastify({
   logger: {
@@ -43,6 +44,7 @@ app.register(testRoutes);
 app.register(authRoutes, { prefix: "/auth" });
 app.register(userRoutes, { prefix: "/users" });
 app.register(organizationRoutes, { prefix: "/organizations" });
+app.register(projectRoutes, { prefix: "/organizations" });
 // app.register(membershipRoutes, { prefix: "/organizations" });
 
 app.get("/health", async () => ({

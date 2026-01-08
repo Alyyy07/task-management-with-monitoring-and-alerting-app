@@ -2,7 +2,7 @@ import { AuthzErrorCode } from "../authz/authz.errors.js";
 import { AuthContext } from "../authz/authz.type.js";
 import { enforce } from "../authz/enforce.js";
 import { OrganizationRepository } from "../organization/organization.type.js";
-import { ProjectRepository } from "../project/project.types.js";
+import { ProjectRepository } from "../organization/project/project.types.js";
 import { TaskRepository } from "../tasks/tasks.types.js";
 import { taskPolicy } from "./tasks.policies.js";
 
@@ -25,7 +25,7 @@ export class TaskAuthz {
       project.organizationId
     );
 
-    if(!membership) {
+    if (!membership) {
       throw new Error("NOT_MEMBER");
     }
 
@@ -34,7 +34,6 @@ export class TaskAuthz {
       isAssignee: await this.taskRepo.isAssignee(taskId, context.userId),
       isProjectCreator: project.createdBy === context.userId,
     });
-
 
     return policy;
   }

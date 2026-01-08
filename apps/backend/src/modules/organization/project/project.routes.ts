@@ -1,12 +1,12 @@
 import { FastifyInstance } from "fastify";
 import { ProjectService } from "./project.service.js";
 import { ProjectAuthz } from "./project.authz.js";
-import { organizationRepository } from "../organization/organization.repository.js";
+import { organizationRepository } from "../organization.repository.js";
 import { projectRepository } from "./project.repository.js";
 import { buildProjectController } from "./project.controller.js";
 
 type ProjectRoutesOptions = {
-  projectService: ProjectService;
+  projectService?: ProjectService;
 };
 
 export async function projectRoutes(
@@ -23,8 +23,9 @@ export async function projectRoutes(
 
   app.addHook("preHandler", app.authenticate);
 
-  app.get("/organizations/:orgId/projects", controller.list);
-  app.post("/projects", controller.create);
-  app.put("/projects/:projectId", controller.update);
-  app.delete("/projects/:projectId", controller.delete);
+  app.get("/:orgId/projects", controller.list);
+  app.post("/:orgId/projects", controller.create);
+  app.get("/:orgId/projects/:projectId", controller.get);
+  app.put("/:orgId/projects/:projectId", controller.update);
+  app.delete("/:orgId/projects/:projectId", controller.delete);
 }
