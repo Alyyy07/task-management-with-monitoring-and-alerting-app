@@ -6,7 +6,7 @@ import { taskRepository } from "./tasks.repository.js";
 import { organizationRepository } from "../organization/organization.repository.js";
 import { CreateTaskSchema, UpdateTaskSchema } from "./tasks.schema.js";
 import { TaskAuthz } from "./task.authz.js";
-import { projectRepository } from "../project/project.repository.js";
+import { projectRepository } from "../organization/project/project.repository.js";
 type TaskRoutesOptions = {
   taskService: TaskService;
 };
