@@ -4,7 +4,7 @@ import { AuthService } from "./auth.service.js";
 const refreshCookieOptions = {
   httpOnly: true,
   sameSite: "strict" as const,
-  path: "/auth",
+  path: "/",
 };
 
 export function buildAuthController(authService: AuthService) {
@@ -44,7 +44,7 @@ export function buildAuthController(authService: AuthService) {
       }
 
       return reply
-        .clearCookie("refreshToken", { path: "/auth" })
+        .clearCookie("refreshToken", { path: "/" })
         .status(204)
         .send();
     },
