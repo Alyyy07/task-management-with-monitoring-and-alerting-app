@@ -7,7 +7,6 @@ import { jwtPlugin } from "./plugins/jwt.js";
 import { authRoutes } from "./modules/auth/auth.routes.js";
 import { userRoutes } from "./modules/user/user.routes.js";
 import { organizationRoutes } from "./modules/organization/organization.route.js";
-import { membershipRoutes } from "./modules/membership/membership.route.js";
 import { metricsPlugin } from "./plugins/metrics.js";
 import { testRoutes } from "./modules/tes/tes.route.js";
 import "./metrics/db.js";
@@ -45,7 +44,6 @@ app.register(authRoutes, { prefix: "/auth" });
 app.register(userRoutes, { prefix: "/users" });
 app.register(organizationRoutes, { prefix: "/organizations" });
 app.register(projectRoutes, { prefix: "/organizations" });
-// app.register(membershipRoutes, { prefix: "/organizations" });
 
 app.get("/health", async () => ({
   status: "ok",
