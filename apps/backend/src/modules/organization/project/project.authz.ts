@@ -19,15 +19,35 @@ export class ProjectAuthz {
     enforce(policy.canRead(), AuthzErrorCode.NOT_MEMBER);
   }
 
-  async requireReadProject(context: AuthContext, orgId: string) {
-    const membership = await this.orgRepo.getMembership(
+  async requireReadProject(context: AuthContext, projectId: string) {
+    const membership = await this.projectRepo.getMembership(
       context.userId,
-      orgId
+      projectId
     );
 
-    const policy = projectPolicy(context, membership, false);
+    const isCreator =
+      (await this.projectRepo.isCreator(projectId, context.userId)) ===
+      "CREATOR";
+    const policy = projectPolicy(context, membership, isCreator);
 
     enforce(policy.canRead(), AuthzErrorCode.NOT_MEMBER);
+  }
+
+  async requireManageMembers(context: AuthContext, projectId: string) {
+    const membership = await this.projectRepo.getMembership(
+      context.userId,
+      projectId
+    );
+
+    const isCreator =
+      (await this.projectRepo.isCreator(projectId, context.userId)) ===
+      "CREATOR";
+
+      console.log(isCreator);
+
+    const policy = projectPolicy(context, membership, isCreator);
+
+    enforce(policy.canManageMembers(), AuthzErrorCode.INSUFFICIENT_ROLE);
   }
 
   async requireCreate(context: AuthContext, orgId: string) {
@@ -36,10 +56,7 @@ export class ProjectAuthz {
   }
 
   async requireUpdate(context: AuthContext, projectId: string, orgId: string) {
-    const membership = await this.orgRepo.getMembership(
-      context.userId,
-      orgId
-    );
+    const membership = await this.orgRepo.getMembership(context.userId, orgId);
 
     const isCreator =
       (await this.projectRepo.isCreator(projectId, context.userId)) ===
@@ -51,10 +68,7 @@ export class ProjectAuthz {
   }
 
   async requireDelete(context: AuthContext, orgId: string) {
-    const membership = await this.orgRepo.getMembership(
-      context.userId,
-      orgId
-    );
+    const membership = await this.orgRepo.getMembership(context.userId, orgId);
 
     const policy = projectPolicy(context, membership, false);
 

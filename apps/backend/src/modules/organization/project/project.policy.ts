@@ -28,6 +28,7 @@ export function projectPolicy(
       canCreate: () => true,
       canUpdate: () => isCreator,
       canDelete: () => false,
+      canManageMembers: () => true,
     };
   }
 
@@ -36,6 +37,7 @@ export function projectPolicy(
     canCreate: () => false,
     canUpdate: () => false,
     canDelete: () => false,
+    canManageMembers: () => false,
   };
 }
 
@@ -45,6 +47,8 @@ function allowAll() {
     canCreate: () => true,
     canUpdate: () => true,
     canDelete: () => true,
+    canManageMembers: () => true,
+
   };
 }
 
@@ -54,5 +58,6 @@ function denyAll() {
     canCreate: () => false,
     canUpdate: () => false,
     canDelete: () => false,
+    canManageMembers: () => false,
   };
 }

@@ -10,11 +10,8 @@ export function buildProjectController(service: ProjectService) {
     },
 
     async get(req: FastifyRequest, reply: FastifyReply) {
-      const { projectId, orgId } = req.params as {
-        projectId: string;
-        orgId: string;
-      };
-      const project = await service.get(req.user, projectId, orgId);
+      const { projectId } = req.params as { projectId: string };
+      const project = await service.get(req.user, projectId);
       reply.send(project);
     },
 
@@ -41,6 +38,46 @@ export function buildProjectController(service: ProjectService) {
         orgId: string;
       };
       await service.delete(req.user, projectId, orgId);
+      reply.status(204).send();
+    },
+
+    async listMembers(req: FastifyRequest, reply: FastifyReply) {
+      const { projectId } = req.params as { projectId: string };
+      const members = await service.listMembers(req.user, projectId);
+      reply.status(200).send(members);
+    },
+
+    async addMember(req: FastifyRequest, reply: FastifyReply) {
+      const { orgId, projectId } = req.params as {
+        orgId: string;
+        projectId: string;
+      };
+      const { userId, role } = req.body as {
+        userId: string;
+        role: "ADMIN" | "MEMBER";
+      };
+      await service.addMember(req.user, orgId, projectId, userId, role);
+      reply.status(204).send();
+    },
+
+    async removeMember(req: FastifyRequest, reply: FastifyReply) {
+      const { orgId, projectId, userId } = req.params as {
+        orgId: string;
+        projectId: string;
+        userId: string;
+      };
+      await service.removeMember(req.user, orgId, projectId, userId);
+      reply.status(204).send();
+    },
+
+    async changeMemberRole(req: FastifyRequest, reply: FastifyReply) {
+      const { orgId, projectId, userId } = req.params as {
+        orgId: string;
+        projectId: string;
+        userId: string;
+      };
+      const { role } = req.body as { role: "ADMIN" | "MEMBER" };
+      await service.changeMemberRole(req.user, orgId, projectId, userId, role);
       reply.status(204).send();
     },
   };
