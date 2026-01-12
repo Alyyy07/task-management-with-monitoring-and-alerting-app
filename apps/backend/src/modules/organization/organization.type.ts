@@ -1,12 +1,15 @@
 export interface OrganizationRepository {
+  listAllOrg(): Promise<Organization[]>;
   listOrgByUser(
     userId: string,
-    isSuperAdmin: boolean | undefined
   ): Promise<Organization[]>;
   listMembers(orgId: string): Promise<Membership[]>;
-  getMembership(userId: string, orgId: string): Promise<Membership | null>;
+  findMembership(
+    userId: string,
+    orgId: string
+  ): Promise<{ role: "OWNER" | "ADMIN" | "MEMBER" }>;
   findById(id: string): Promise<Organization | null>;
-  create(data: { name: string, createdById: string }): Promise<Organization>;
+  create(data: { name: string; createdById: string }): Promise<Organization>;
   update(id: string, data: { name?: string }): Promise<Organization>;
   delete(id: string): Promise<void>;
   addMember(

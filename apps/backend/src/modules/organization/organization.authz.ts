@@ -28,7 +28,19 @@ export class OrganizationAuthz {
   }
 
   private async policy(context: AuthContext, orgId: string) {
-    const membership = await this.repo.getMembership(context.userId, orgId);
+    const membership = await this.getMembership(context.userId, orgId);
     return organizationPolicy(context, membership);
+  }
+
+  async getMembership(userId: string, organizationId: string) {
+    const membership = await this.repo.findMembership(userId, organizationId);
+    if (!membership) {
+      const orgExists = await this.repo.findById(organizationId);
+      return !!orgExists 
+        ? ({ status: 'NOT_MEMBER' } as const)
+        : ({ status: 'NOT_FOUND' } as const);
+    }
+
+    return { status: 'MEMBER', role: membership.role } as const;
   }
 }

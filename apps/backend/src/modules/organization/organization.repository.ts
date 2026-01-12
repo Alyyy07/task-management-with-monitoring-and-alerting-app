@@ -1,12 +1,16 @@
 import { prisma } from "../../libs/prisma.js";
-import { Membership, Organization, OrganizationRepository } from "./organization.type.js";
+import {
+  Membership,
+  Organization,
+  OrganizationRepository,
+} from "./organization.type.js";
 
-export const organizationRepository:OrganizationRepository = {
+export const organizationRepository: OrganizationRepository = {
   findById(id: string) {
     return prisma.organization.findUnique({ where: { id } });
   },
 
-  create(data: { name: string, createdById: string }) {
+  create(data: { name: string; createdById: string }) {
     return prisma.organization.create({ data });
   },
 
@@ -18,13 +22,13 @@ export const organizationRepository:OrganizationRepository = {
     return prisma.organization.delete({ where: { id } });
   },
 
-  async listOrgByUser(
+  listAllOrg(): Promise<Organization[]>{
+    return prisma.organization.findMany();
+  },
+
+  listOrgByUser(
     userId: string,
-    isSuperAdmin: boolean
   ): Promise<Organization[]> {
-    if (isSuperAdmin) {
-      return prisma.organization.findMany();
-    }
     return prisma.organization.findMany({
       where: {
         memberships: { some: { userId } },
@@ -38,29 +42,16 @@ export const organizationRepository:OrganizationRepository = {
     });
   },
 
-  async getMembership(
-    userId: string,
-    organizationId: string
-  ): Promise<Membership> {
-    const membership = await prisma.membership.findUnique({
+  findMembership(userId: string, organizationId: string) {
+    return prisma.membership.findUnique({
       where: {
-        userId_organizationId: { userId, organizationId },
+        userId_organizationId: {
+          userId,
+          organizationId,
+        },
       },
+      select: { role: true },
     });
-
-    if (!membership) {
-      const orgExists = await prisma.organization.findUnique({
-        where: { id: organizationId },
-        select: { id: true },
-      });
-
-      return orgExists ? { status: "NOT_MEMBER" } : { status: "NOT_FOUND" };
-    }
-
-    return {
-      status: "MEMBER",
-      role: membership.role,
-    };
   },
 
   addMember(userId: string, organizationId: string, role: "ADMIN" | "MEMBER") {

@@ -10,7 +10,8 @@ export class OrganizationService {
   ) {}
 
   async listOrg(context: AuthContext) {
-    return await this.repo.listOrgByUser(context.userId, context.isSuperAdmin);
+    if(context.isSuperAdmin) return await this.repo.listAllOrg();
+    return await this.repo.listOrgByUser(context.userId);
   }
 
   async create(context: AuthContext, name: string) {
