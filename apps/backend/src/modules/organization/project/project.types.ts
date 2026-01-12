@@ -1,4 +1,4 @@
-import { Membership } from "../organization.type.js";
+import { Membership, Organization } from "../organization.type.js";
 
 export interface ProjectRepository {
   create(data: {
@@ -11,22 +11,17 @@ export interface ProjectRepository {
   findByOrganization(orgId: string): Promise<Project[]>;
   update(id: string, data: { name?: string }): Promise<Project>;
   delete(id: string): Promise<void>;
-  getMembership(userId: string, projectId: string): Promise<Membership | null>;
+  getOrgMembership(userId: string, organizationId: string): Promise<Membership>;
+  findMembership(userId: string, projectId: string): Promise<{role:"OWNER" | "ADMIN" | "MEMBER"}>;
   listMembers(projectId: string): Promise<Membership[]>;
-  isCreator(
-    projectId: string,
-    userId: string
-  ): Promise<"CREATOR" | "NOT_CREATOR" | "NOT_FOUND">;
   addMember(
     userId: string,
-    organizationId: string,
     projectId: string,
     role: "OWNER" | "ADMIN" | "MEMBER"
   ): Promise<void>;
-  removeMember(userId: string, orgId: string, projectId: string): Promise<void>;
+  removeMember(userId: string, projectId: string): Promise<void>;
   changeMemberRole(
     userId: string,
-    orgId: string,
     projectId: string,
     role: "ADMIN" | "MEMBER"
   ): Promise<void>;

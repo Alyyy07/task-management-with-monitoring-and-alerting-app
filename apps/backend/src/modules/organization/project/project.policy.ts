@@ -4,7 +4,6 @@ import { Membership } from "../organization.type.js";
 export function projectPolicy(
   context: { userId: string; isSuperAdmin?: boolean },
   membership: Membership | null,
-  isCreator: boolean
 ) {
   if (context.isSuperAdmin) {
     return allowAll();
@@ -26,7 +25,7 @@ export function projectPolicy(
     return {
       canRead: () => true,
       canCreate: () => true,
-      canUpdate: () => isCreator,
+      canUpdate: () => true,
       canDelete: () => false,
       canManageMembers: () => true,
     };

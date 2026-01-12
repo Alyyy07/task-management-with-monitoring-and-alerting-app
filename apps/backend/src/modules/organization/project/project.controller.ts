@@ -24,11 +24,10 @@ export function buildProjectController(service: ProjectService) {
 
     async update(req: FastifyRequest, reply: FastifyReply) {
       const body = req.body as { name?: string };
-      const { projectId, orgId } = req.params as {
+      const { projectId } = req.params as {
         projectId: string;
-        orgId: string;
       };
-      const project = await service.update(req.user, projectId, orgId, body);
+      const project = await service.update(req.user, projectId, body);
       reply.send(project);
     },
 
@@ -48,36 +47,33 @@ export function buildProjectController(service: ProjectService) {
     },
 
     async addMember(req: FastifyRequest, reply: FastifyReply) {
-      const { orgId, projectId } = req.params as {
-        orgId: string;
+      const { projectId } = req.params as {
         projectId: string;
       };
       const { userId, role } = req.body as {
         userId: string;
         role: "ADMIN" | "MEMBER";
       };
-      await service.addMember(req.user, orgId, projectId, userId, role);
+      await service.addMember(req.user, projectId, userId, role);
       reply.status(204).send();
     },
 
     async removeMember(req: FastifyRequest, reply: FastifyReply) {
-      const { orgId, projectId, userId } = req.params as {
-        orgId: string;
+      const { projectId, userId } = req.params as {
         projectId: string;
         userId: string;
       };
-      await service.removeMember(req.user, orgId, projectId, userId);
+      await service.removeMember(req.user, projectId, userId);
       reply.status(204).send();
     },
 
     async changeMemberRole(req: FastifyRequest, reply: FastifyReply) {
-      const { orgId, projectId, userId } = req.params as {
-        orgId: string;
+      const { projectId, userId } = req.params as {
         projectId: string;
         userId: string;
       };
       const { role } = req.body as { role: "ADMIN" | "MEMBER" };
-      await service.changeMemberRole(req.user, orgId, projectId, userId, role);
+      await service.changeMemberRole(req.user, projectId, userId, role);
       reply.status(204).send();
     },
   };

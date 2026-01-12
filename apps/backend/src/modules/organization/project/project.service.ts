@@ -27,7 +27,7 @@ export class ProjectService {
       organizationId: orgId,
     });
 
-    this.repo.addMember(context.userId, orgId, project.id, "OWNER");
+    this.repo.addMember(context.userId, project.id, "OWNER");
 
     return project;
   }
@@ -35,10 +35,9 @@ export class ProjectService {
   async update(
     context: AuthContext,
     projectId: string,
-    orgId: string,
     data: { name?: string }
   ) {
-    await this.authz.requireUpdate(context, projectId, orgId);
+    await this.authz.requireUpdate(context, projectId);
     return this.repo.update(projectId, data);
   }
 
@@ -54,33 +53,31 @@ export class ProjectService {
 
   async addMember(
     context: AuthContext,
-    orgId: string,
     projectId: string,
     userId: string,
     role: "ADMIN" | "MEMBER"
   ) {
     await this.authz.requireManageMembers(context, projectId);
-    return this.repo.addMember(userId, orgId, projectId, role);
+
+    return this.repo.addMember(userId, projectId, role);
   }
 
   async removeMember(
     context: AuthContext,
-    orgId: string,
     projectId: string,
     userId: string
   ) {
     await this.authz.requireManageMembers(context, projectId);
-    await this.repo.removeMember(userId, orgId, projectId);
+    await this.repo.removeMember(userId, projectId);
   }
 
   async changeMemberRole(
     context: AuthContext,
-    orgId: string,
     projectId: string,
     userId: string,
     role: "ADMIN" | "MEMBER"
   ) {
     await this.authz.requireManageMembers(context, projectId);
-    await this.repo.changeMemberRole(userId, orgId, projectId, role);
+    await this.repo.changeMemberRole(userId, projectId, role);
   }
 }
