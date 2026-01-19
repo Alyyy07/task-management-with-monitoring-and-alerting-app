@@ -1,38 +1,39 @@
-import { AuthzErrorCode } from "../authz/authz.errors.js";
-import { AuthContext } from "../authz/authz.type.js";
-import { enforce } from "../authz/enforce.js";
-import { OrganizationRepository } from "../organization/organization.type.js";
+import { AuthzErrorCode, AuthzError } from "../../libs/authz/authz.errors.js";
+import { AuthContext } from "../../libs/authz/authz.type.js";
+import { enforce } from "../../libs/authz/enforce.js";
+import { OrganizationAuthz } from "../organization/organization.authz.js";
 import { ProjectRepository } from "../organization/project/project.types.js";
 import { TaskRepository } from "../tasks/tasks.types.js";
 import { taskPolicy } from "./tasks.policies.js";
 
 export class TaskAuthz {
   constructor(
-    private readonly orgRepo: OrganizationRepository,
+    private readonly orgAuthz: OrganizationAuthz,
     private readonly projectRepo: ProjectRepository,
     private readonly taskRepo: TaskRepository
   ) {}
 
   async policyForTask(context: AuthContext, taskId: string) {
     const task = await this.taskRepo.findById(taskId);
-    if (!task) throw new Error("TASK_NOT_FOUND");
+    if (!task) throw new AuthzError(AuthzErrorCode.NOT_FOUND, "Task not found");
 
     const project = await this.projectRepo.findById(task.projectId);
-    if (!project) throw new Error("PROJECT_NOT_FOUND");
+    if (!project)
+      throw new AuthzError(AuthzErrorCode.NOT_FOUND, "Project not found");
 
-    const membership = await this.orgRepo.getMembership(
+    const membership = await this.orgAuthz.getMembership(
       context.userId,
       project.organizationId
     );
 
-    if (!membership) {
-      throw new Error("NOT_MEMBER");
+    if (membership.status !== "MEMBER") {
+      throw new AuthzError(AuthzErrorCode.NOT_MEMBER);
     }
 
     const policy = taskPolicy(context, membership, {
       isCreator: await this.taskRepo.isCreator(taskId, context.userId),
       isAssignee: await this.taskRepo.isAssignee(taskId, context.userId),
-      isProjectCreator: project.createdBy === context.userId,
+      isProjectCreator: project.createdById === context.userId,
     });
 
     return policy;
