@@ -19,8 +19,11 @@ export const authenticate = fp(async (app) => {
     try {
       const payload = app.tokenService.verifyAccessToken(token);
       req.user = { userId: payload.userId };
-    } catch (err) {
+    } catch (err: any) {
       req.log.error(err, "JWT verification failed");
+      if (err.code === "FAST_JWT_EXPIRED" || err.name === "TokenExpiredError") {
+        throw new AuthError(AuthErrorCode.TOKEN_EXPIRED, "Token has expired");
+      }
       throw new AuthError(AuthErrorCode.INVALID_ACCESS_TOKEN);
     }
   });
