@@ -5,19 +5,50 @@ import { organizationRepository } from "../organization.repository.js";
 import { projectRepository } from "./project.repository.js";
 import { buildProjectController } from "./project.controller.js";
 import { csrfGuard } from "../../../plugins/csrf.js";
+import { OrganizationAuthz } from "../organization.authz.js";
+import { taskRelationalRoutes } from "../../tasks/tasks.routes.js";
+import {
+  createProjectSchema,
+  updateProjectSchema,
+  addProjectMemberSchema,
+  listProjectsSchema,
+  getProjectBySlugSchema,
+  getProjectSchema,
+  deleteProjectSchema,
+  listProjectMembersSchema,
+  removeProjectMemberSchema,
+  updateProjectMemberRoleSchema,
+} from "./project.schema.js";
 
 type ProjectRoutesOptions = {
   projectService?: ProjectService;
 };
 
-export async function projectRoutes(
+export async function projectRelationalRoutes(
   app: FastifyInstance,
-  opts: ProjectRoutesOptions
+  opts: ProjectRoutesOptions,
 ) {
-  const projectAuhz = new ProjectAuthz(
-    organizationRepository,
-    projectRepository
+  const orgAuthz = new OrganizationAuthz(organizationRepository);
+  const projectAuhz = new ProjectAuthz(projectRepository, orgAuthz);
+  const projectService =
+    opts.projectService || new ProjectService(projectRepository, projectAuhz);
+  const controller = buildProjectController(projectService);
+
+  app.get("/", { schema: listProjectsSchema }, controller.list);
+  app.post("/", { schema: createProjectSchema }, controller.create);
+  app.get(
+    "/slug/:slug",
+    { schema: getProjectBySlugSchema },
+    controller.getBySlug,
   );
+}
+
+export async function projectDirectRoutes(
+  app: FastifyInstance,
+  opts: ProjectRoutesOptions,
+) {
+  const orgAuthz = new OrganizationAuthz(organizationRepository);
+  const projectAuhz = new ProjectAuthz(projectRepository, orgAuthz);
   const projectService =
     opts.projectService || new ProjectService(projectRepository, projectAuhz);
   const controller = buildProjectController(projectService);
@@ -25,14 +56,35 @@ export async function projectRoutes(
   app.addHook("preHandler", app.authenticate);
   app.addHook("preHandler", csrfGuard);
 
-  app.get("/:orgId/projects", controller.list);
-  app.post("/:orgId/projects", controller.create);
-  app.get("/:orgId/projects/:projectId", controller.get);
-  app.put("/:orgId/projects/:projectId", controller.update);
-  app.delete("/:orgId/projects/:projectId", controller.delete);
+  app.get("/:projectId", { schema: getProjectSchema }, controller.get);
+  app.put("/:projectId", { schema: updateProjectSchema }, controller.update);
+  app.delete("/:projectId", { schema: deleteProjectSchema }, controller.delete);
 
-  app.get("/:orgId/projects/:projectId/members", controller.listMembers);
-  app.post("/:orgId/projects/:projectId/members", controller.addMember);
-  app.put("/:orgId/projects/:projectId/members/:userId", controller.changeMemberRole);
-  app.delete("/:orgId/projects/:projectId/members/:userId", controller.removeMember);
+  // Project Members
+  app.get(
+    "/:projectId/members",
+    { schema: listProjectMembersSchema },
+    controller.listMembers,
+  );
+  app.post(
+    "/:projectId/members",
+    { schema: addProjectMemberSchema },
+    controller.addMember,
+  );
+  app.put(
+    "/:projectId/members/:userId",
+    { schema: updateProjectMemberRoleSchema },
+    controller.changeMemberRole,
+  );
+  app.delete(
+    "/:projectId/members/:userId",
+    { schema: removeProjectMemberSchema },
+    controller.removeMember,
+  );
+
+  // Task Relational Routes
+  app.register(taskRelationalRoutes, { prefix: "/:projectId/tasks" });
 }
+
+// Deprecated
+export const projectRoutes = projectDirectRoutes;

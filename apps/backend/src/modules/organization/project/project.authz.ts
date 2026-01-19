@@ -1,6 +1,6 @@
-import { AuthzErrorCode } from "../../authz/authz.errors.js";
-import { AuthContext } from "../../authz/authz.type.js";
-import { enforce } from "../../authz/enforce.js";
+import { AuthzErrorCode } from "../../../libs/authz/authz.errors.js";
+import { AuthContext } from "../../../libs/authz/authz.type.js";
+import { enforce } from "../../../libs/authz/enforce.js";
 import { ProjectRepository } from "./project.types.js";
 import { projectPolicy } from "./project.policy.js";
 import { OrganizationAuthz } from "../organization.authz.js";
@@ -11,8 +11,8 @@ export class ProjectAuthz {
     private readonly orgAuthz: OrganizationAuthz
   ) {}
 
-  requireReadInOrg(context: AuthContext, orgId: string) {
-    this.orgAuthz.requireRead(context, orgId);
+  async requireReadInOrg(context: AuthContext, orgId: string) {
+    return this.orgAuthz.requireRead(context, orgId);
   }
 
   async requireReadProject(context: AuthContext, projectId: string) {
@@ -26,8 +26,9 @@ export class ProjectAuthz {
   }
 
   async requireCreate(context: AuthContext, orgId: string) {
-    const membership = await this.orgAuthz.getMembership(context.userId,orgId);
-    return projectPolicy(context,membership)
+    const membership = await this.orgAuthz.getMembership(context.userId, orgId);
+    const policy = projectPolicy(context, membership);
+    enforce(policy.canCreate(), AuthzErrorCode.INSUFFICIENT_ROLE);
   }
 
   async requireUpdate(context: AuthContext, projectId: string) {
@@ -42,6 +43,24 @@ export class ProjectAuthz {
   }
 
   private async policy(context: AuthContext, projectId: string) {
+    // First, get the project to find its organization
+    const project = await this.repo.findById(projectId);
+    if (!project) {
+      return projectPolicy(context, { status: "NOT_FOUND" } as const);
+    }
+
+    // Check organization-level permissions using OrganizationAuthz
+    const orgPolicy = await this.orgAuthz.policy(
+      context,
+      project.organizationId
+    );
+
+    // If user cannot even read the organization, deny all project access
+    if (!orgPolicy.canRead()) {
+      return projectPolicy(context, { status: "NOT_MEMBER" } as const);
+    }
+
+    // check project-specific membership
     const membership = await this.getMembership(context.userId, projectId);
     return projectPolicy(context, membership);
   }

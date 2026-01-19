@@ -1,5 +1,6 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { ProjectService } from "./project.service.js";
+import { ProjectStatus } from "./project.types.js";
 
 export function buildProjectController(service: ProjectService) {
   return {
@@ -15,15 +16,36 @@ export function buildProjectController(service: ProjectService) {
       reply.send(project);
     },
 
+    async getBySlug(req: FastifyRequest, reply: FastifyReply) {
+      const { orgId, slug } = req.params as { orgId: string; slug: string };
+      const project = await service.getBySlug(req.user, orgId, slug);
+      if (!project)
+        return reply.status(404).send({ error: "Project not found" });
+      reply.send(project);
+    },
+
     async create(req: FastifyRequest, reply: FastifyReply) {
-      const body = req.body as { name: string };
+      const body = req.body as {
+        name: string;
+        slug?: string;
+        description?: string;
+        startDate?: string;
+        endDate?: string;
+      };
       const { orgId } = req.params as { orgId: string };
       const project = await service.create(req.user, body, orgId);
       reply.status(201).send(project);
     },
 
     async update(req: FastifyRequest, reply: FastifyReply) {
-      const body = req.body as { name?: string };
+      const body = req.body as {
+        name?: string;
+        slug?: string;
+        description?: string;
+        status?: ProjectStatus;
+        startDate?: string;
+        endDate?: string;
+      };
       const { projectId } = req.params as {
         projectId: string;
       };
@@ -32,11 +54,11 @@ export function buildProjectController(service: ProjectService) {
     },
 
     async delete(req: FastifyRequest, reply: FastifyReply) {
-      const { projectId, orgId } = req.params as {
+      const { projectId } = req.params as {
         projectId: string;
-        orgId: string;
       };
-      await service.delete(req.user, projectId, orgId);
+      const { cascade } = req.query as { cascade?: string };
+      await service.delete(req.user, projectId, cascade === "true");
       reply.status(204).send();
     },
 
