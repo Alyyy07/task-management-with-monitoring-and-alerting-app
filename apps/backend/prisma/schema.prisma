@@ -13,7 +13,7 @@ enum GlobalRole {
 }
 
 model User {
-  id        String   @id @default(uuid())
+  id        String   @id @default(cuid())
   email     String   @unique
   password  String
   firstName String?
@@ -27,8 +27,8 @@ model User {
 
   organizations Organization[]
   projects Project[]
-  projectMemberhips ProjectMembership[]
-  memberships Membership[]
+  projectMemberships ProjectMembership[]
+  memberships       Membership[]
   auditLogs   AuditLog[]
   activityLogs ActivityLog[]
   createdTasks Task[] @relation("TaskCreatedBy")
@@ -54,6 +54,10 @@ model Organization {
   activityLogs ActivityLog[]
   auditLogs   AuditLog[]
   tags        Tag[]
+  deletedAt   DateTime?
+
+  @@index([deletedAt])
+  @@index([slug, deletedAt])
 }
 
 model Membership {
@@ -92,7 +96,11 @@ model Project {
   tasks          Task[]
   projectMemberships ProjectMembership[]
   activityLogs ActivityLog[]
+  deletedAt      DateTime?
 
+  @@index([deletedAt])
+  @@index([organizationId, slug, deletedAt])
+  @@index([createdById])
   @@unique([organizationId, slug])
 }
 
@@ -131,7 +139,7 @@ model Task {
   projectId   String
   description String
   assigneeId  String?
-  createdById String
+  createdById String?
   dueDate     DateTime?
   position    Float?
   createdAt   DateTime @default(now())
@@ -139,13 +147,18 @@ model Task {
 
   project  Project @relation(fields: [projectId], references: [id], onDelete : Cascade)
 
-  createdBy User @relation("TaskCreatedBy",fields: [createdById],references: [id], onDelete: SetNull)
+  createdBy User? @relation("TaskCreatedBy",fields: [createdById],references: [id], onDelete: SetNull)
 
   assignee User? @relation("TaskAssignee",fields: [assigneeId],references: [id], onDelete: SetNull)
 
   activityLogs ActivityLog[]
   comments     Comment[]
   tags         Tag[]
+  deletedAt    DateTime?
+
+  @@index([deletedAt])
+  @@index([projectId,status, deletedAt])
+  @@index([assigneeId, deletedAt])
 }
 
 enum TaskPriority {
@@ -181,6 +194,9 @@ model ActivityLog {
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
   project Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
   organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
+  @@index([entityId,entityType])
+  @@index([createdAt])
 }
 
 model AuditLog {
