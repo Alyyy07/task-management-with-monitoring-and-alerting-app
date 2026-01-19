@@ -9,7 +9,7 @@ import { authRoutes } from "./modules/auth/auth.routes.js";
 import { userRoutes } from "./modules/user/user.routes.js";
 import { organizationRoutes } from "./modules/organization/organization.route.js";
 import { metricsPlugin } from "./plugins/metrics.js";
-import { testRoutes } from "./modules/tes/tes.route.js";
+import { baseRoutes } from "./modules/base/base.route.js";
 import { registerErrorHandler } from "./plugins/error-handler.plugin.js";
 import { tokenServicePlugin } from "./plugins/jwt-token.service.js";
 import { projectDirectRoutes } from "./modules/organization/project/project.routes.js";
@@ -46,7 +46,7 @@ app.register(jwtPlugin);
 app.register(tokenServicePlugin);
 app.register(authenticate);
 
-app.register(testRoutes);
+app.register(baseRoutes);
 app.register(authRoutes, { prefix: "/auth" });
 app.register(userRoutes, { prefix: "/users" });
 app.register(organizationRoutes, { prefix: "/organizations" });
