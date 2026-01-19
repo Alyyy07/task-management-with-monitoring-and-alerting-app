@@ -12,6 +12,7 @@ const authRepositoryMock = {
   revokeRefreshToken: vi.fn(),
   storeCsrfToken: vi.fn(),
   revokeCsrfTokens: vi.fn(),
+  revokeCsrfTokensBySession: vi.fn(),
 };
 
 vi.mock("../../../utils/password.js", () => ({
@@ -39,8 +40,7 @@ describe("Auth Service", () => {
       password: "hashed",
     });
 
-    authRepositoryMock.revokeAllRefreshTokens.mockResolvedValue(undefined);
-    authRepositoryMock.storeRefreshToken.mockResolvedValue(undefined);
+    authRepositoryMock.storeRefreshToken.mockResolvedValue({ id: "rt-1" });
     authRepositoryMock.storeCsrfToken.mockResolvedValue(undefined);
 
     tokenServiceMock.signAccessToken.mockReturnValue("access-token");
@@ -55,9 +55,8 @@ describe("Auth Service", () => {
       csrfToken: expect.any(String),
     });
 
-    expect(authRepositoryMock.revokeAllRefreshTokens).toHaveBeenCalledWith(
-      "user-1"
-    );
+    // Global revocation should NOT be called in multi-session model
+    expect(authRepositoryMock.revokeAllRefreshTokens).not.toHaveBeenCalled();
 
     expect(tokenServiceMock.signAccessToken).toHaveBeenCalledWith({
       userId: "user-1",
@@ -95,7 +94,8 @@ describe("Auth Service", () => {
     });
 
     authRepositoryMock.revokeRefreshToken.mockResolvedValue(undefined);
-    authRepositoryMock.storeRefreshToken.mockResolvedValue(undefined);
+    authRepositoryMock.revokeCsrfTokensBySession.mockResolvedValue(undefined);
+    authRepositoryMock.storeRefreshToken.mockResolvedValue({ id: "rt-2" });
     authRepositoryMock.storeCsrfToken.mockResolvedValue(undefined);
 
     tokenServiceMock.signAccessToken.mockReturnValue("new-access-token");
@@ -123,21 +123,22 @@ describe("Auth Service", () => {
     );
   });
 
-  it("revokes refresh token and csrf tokens on logout", async () => {
+  it("revokes refresh token and specific csrf session tokens on logout", async () => {
     authRepositoryMock.findValidRefreshToken.mockResolvedValue({
       id: "rt-1",
       userId: "user-1",
     });
 
-    authRepositoryMock.revokeCsrfTokens.mockResolvedValue(undefined);
+    authRepositoryMock.revokeCsrfTokensBySession.mockResolvedValue(undefined);
     authRepositoryMock.revokeRefreshToken.mockResolvedValue(undefined);
 
     const service = buildService();
 
     await service.revokeRefreshToken("refresh-token");
 
-    expect(authRepositoryMock.revokeCsrfTokens).toHaveBeenCalledWith("user-1");
-
+    expect(authRepositoryMock.revokeCsrfTokensBySession).toHaveBeenCalledWith(
+      "rt-1"
+    );
     expect(authRepositoryMock.revokeRefreshToken).toHaveBeenCalledWith("rt-1");
   });
 });

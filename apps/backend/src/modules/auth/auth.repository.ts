@@ -11,19 +11,26 @@ export const authRepository: AuthRepository = {
     return prisma.user.findUnique({ where: { email } });
   },
 
-  createUser(email, hashedPassword) {
+  createUser(email, hashedPassword, profile) {
     return prisma.user.create({
-      data: { email, password: hashedPassword },
+      data: {
+        email,
+        password: hashedPassword,
+        firstName: profile?.firstName,
+        lastName: profile?.lastName,
+        avatarUrl: profile?.avatarUrl,
+      },
     });
   },
 
   async storeRefreshToken(userId, rawToken, expiresAt) {
-    await prisma.refreshToken.create({
+    return prisma.refreshToken.create({
       data: {
         userId,
         token: hashToken(rawToken),
         expiresAt,
       },
+      select: { id: true },
     });
   },
 
@@ -55,12 +62,13 @@ export const authRepository: AuthRepository = {
     });
   },
 
-  async storeCsrfToken(userId, rawToken, expiresAt) {
+  async storeCsrfToken(userId, rawToken, expiresAt, refreshTokenId) {
     await prisma.csrfToken.create({
       data: {
         userId,
         token: hashToken(rawToken),
         expiresAt,
+        refreshTokenId,
       },
     });
   },
@@ -71,26 +79,36 @@ export const authRepository: AuthRepository = {
     });
   },
 
+  async revokeCsrfTokensBySession(refreshTokenId) {
+    await prisma.csrfToken.deleteMany({
+      where: { refreshTokenId },
+    });
+  },
+
   async validateCsrfToken(refreshToken: string, rawCsrf: string) {
-  const storedRefresh = await prisma.refreshToken.findFirst({
-    where: {
-      token: hashToken(refreshToken),
-      revoked: false,
-      expiresAt: { gt: new Date() },
-    },
-  });
+    const storedRefresh = await prisma.refreshToken.findFirst({
+      where: {
+        token: hashToken(refreshToken),
+        revoked: false,
+        expiresAt: { gt: new Date() },
+      },
+      select: { id: true, userId: true },
+    });
 
-  if (!storedRefresh) return false;
+    if (!storedRefresh) return false;
 
-  const csrf = await prisma.csrfToken.findFirst({
-    where: {
-      userId: storedRefresh.userId,
-      token: hashToken(rawCsrf),
-      expiresAt: { gt: new Date() },
-    },
-  });
+    const csrf = await prisma.csrfToken.findFirst({
+      where: {
+        userId: storedRefresh.userId,
+        token: hashToken(rawCsrf),
+        expiresAt: { gt: new Date() },
+        OR: [
+          { refreshTokenId: storedRefresh.id },
+          { refreshTokenId: null }, // Fallback for legacy / un-bound tokens
+        ],
+      },
+    });
 
-  return Boolean(csrf);
-}
-
+    return Boolean(csrf);
+  },
 };

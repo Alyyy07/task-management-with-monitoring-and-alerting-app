@@ -3,6 +3,7 @@ import { AuthService } from "./auth.service.js";
 
 const refreshCookieOptions = {
   httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
   sameSite: "strict" as const,
   path: "/",
 };
@@ -10,11 +11,18 @@ const refreshCookieOptions = {
 export function buildAuthController(authService: AuthService) {
   return {
     async register(req: FastifyRequest, reply: FastifyReply) {
-      const { email, password } = req.body as {
+      const { email, password, firstName, lastName, avatarUrl } = req.body as {
         email: string;
         password: string;
+        firstName?: string;
+        lastName?: string;
+        avatarUrl?: string;
       };
-      const user = await authService.register(email, password);
+      const user = await authService.register(email, password, {
+        firstName,
+        lastName,
+        avatarUrl,
+      });
       return reply.status(201).send(user);
     },
 
@@ -55,12 +63,15 @@ export function buildAuthController(authService: AuthService) {
         return reply.status(401).send({ error: "Missing refresh token" });
       }
 
-      const { accessToken, refreshToken: newRefresh } =
-        await authService.refresh(refreshToken);
+      const {
+        accessToken,
+        refreshToken: newRefresh,
+        csrfToken: newCsrf,
+      } = await authService.refresh(refreshToken);
 
       return reply
         .setCookie("refreshToken", newRefresh, refreshCookieOptions)
-        .send({ accessToken });
+        .send({ accessToken, csrfToken: newCsrf });
     },
   };
 }
