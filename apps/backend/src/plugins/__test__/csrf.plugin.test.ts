@@ -20,11 +20,7 @@ function buildApp() {
   app.register(cookie);
   registerErrorHandler(app);
 
-  app.post(
-    "/protected",
-    { preHandler: csrfGuard },
-    async () => ({ ok: true })
-  );
+  app.post("/protected", { preHandler: csrfGuard }, async () => ({ ok: true }));
 
   return app;
 }
@@ -33,81 +29,81 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
-
-
 describe("CSRF Plugin", () => {
   it("returns 403 if CSRF header is missing", async () => {
-  const app = buildApp();
+    const app = buildApp();
 
-  const res = await app.inject({
-    method: "POST",
-    url: "/protected",
-    headers: {
-      cookie: "refreshToken=rt",
-    },
+    const res = await app.inject({
+      method: "POST",
+      url: "/protected",
+      headers: {
+        cookie: "refreshToken=rt",
+      },
+    });
+
+    expect(res.statusCode).toBe(403);
+    expect(JSON.parse(res.body)).toEqual({
+      error: "CSRF_REQUIRED",
+      message: "CSRF_REQUIRED",
+    });
   });
 
-  expect(res.statusCode).toBe(403);
-  expect(JSON.parse(res.body)).toEqual({
-    error: "CSRF_REQUIRED",
-  });
-});
+  it("returns 403 if refresh cookie is missing", async () => {
+    const app = buildApp();
 
-it("returns 403 if refresh cookie is missing", async () => {
-  const app = buildApp();
+    const res = await app.inject({
+      method: "POST",
+      url: "/protected",
+      headers: {
+        "x-csrf-token": "csrf",
+      },
+    });
 
-  const res = await app.inject({
-    method: "POST",
-    url: "/protected",
-    headers: {
-      "x-csrf-token": "csrf",
-    },
-  });
-
-  expect(res.statusCode).toBe(403);
-  expect(JSON.parse(res.body)).toEqual({
-    error: "NO_REFRESH_TOKEN",
-  });
-});
-
-it("returns 403 if CSRF token is invalid", async () => {
-  vi.spyOn(authRepository, "validateCsrfToken").mockResolvedValue(false);
-
-  const app = buildApp();
-
-  const res = await app.inject({
-    method: "POST",
-    url: "/protected",
-    headers: {
-      "x-csrf-token": "bad",
-      cookie: "refreshToken=rt",
-    },
+    expect(res.statusCode).toBe(403);
+    expect(JSON.parse(res.body)).toEqual({
+      error: "NO_REFRESH_TOKEN",
+      message: "NO_REFRESH_TOKEN",
+    });
   });
 
-  expect(res.statusCode).toBe(403);
-  expect(JSON.parse(res.body)).toEqual({
-    error: "INVALID_CSRF_TOKEN",
+  it("returns 403 if CSRF token is invalid", async () => {
+    vi.spyOn(authRepository, "validateCsrfToken").mockResolvedValue(false);
+
+    const app = buildApp();
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/protected",
+      headers: {
+        "x-csrf-token": "bad",
+        cookie: "refreshToken=rt",
+      },
+    });
+
+    expect(res.statusCode).toBe(403);
+    expect(JSON.parse(res.body)).toEqual({
+      error: "INVALID_CSRF_TOKEN",
+      message: "INVALID_CSRF_TOKEN",
+    });
   });
-});
 
-it("allows request if CSRF token is valid", async () => {
-  vi.spyOn(authRepository, "validateCsrfToken").mockResolvedValue(true);
+  it("allows request if CSRF token is valid", async () => {
+    vi.spyOn(authRepository, "validateCsrfToken").mockResolvedValue(true);
 
-  const app = buildApp();
+    const app = buildApp();
 
-  const res = await app.inject({
-    method: "POST",
-    url: "/protected",
-    headers: {
-      "x-csrf-token": "good",
-      cookie: "refreshToken=rt",
-    },
+    const res = await app.inject({
+      method: "POST",
+      url: "/protected",
+      headers: {
+        "x-csrf-token": "good",
+        cookie: "refreshToken=rt",
+      },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body)).toEqual({
+      ok: true,
+    });
   });
-
-  expect(res.statusCode).toBe(200);
-  expect(JSON.parse(res.body)).toEqual({
-    ok: true,
-  });
-});
-
 });

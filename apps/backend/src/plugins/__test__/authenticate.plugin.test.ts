@@ -38,81 +38,106 @@ beforeEach(() => {
 
 describe("Authenticate Plugin", () => {
   it("returns 401 if Authorization header is missing", async () => {
-  const app = buildApp();
+    const app = buildApp();
 
-  const res = await app.inject({
-    method: "GET",
-    url: "/protected",
+    const res = await app.inject({
+      method: "GET",
+      url: "/protected",
+    });
+
+    expect(res.statusCode).toBe(401);
+    expect(JSON.parse(res.body)).toEqual({
+      error: "NO_TOKEN",
+      message: "NO_TOKEN",
+    });
   });
 
-  expect(res.statusCode).toBe(401);
-  expect(JSON.parse(res.body)).toEqual({
-    error: "NO_TOKEN",
-  });
-});
+  it("returns 401 if Authorization header is malformed", async () => {
+    const app = buildApp();
 
-it("returns 401 if Authorization header is malformed", async () => {
-  const app = buildApp();
+    const res = await app.inject({
+      method: "GET",
+      url: "/protected",
+      headers: {
+        authorization: "Bearer",
+      },
+    });
 
-  const res = await app.inject({
-    method: "GET",
-    url: "/protected",
-    headers: {
-      authorization: "Bearer",
-    },
-  });
-
-  expect(res.statusCode).toBe(401);
-  expect(JSON.parse(res.body)).toEqual({
-    error: "NO_TOKEN",
-  });
-});
-
-it("returns 401 if access token is invalid", async () => {
-  tokenServiceMock.verifyAccessToken.mockImplementation(() => {
-    throw new Error("bad token");
+    expect(res.statusCode).toBe(401);
+    expect(JSON.parse(res.body)).toEqual({
+      error: "NO_TOKEN",
+      message: "NO_TOKEN",
+    });
   });
 
-  const app = buildApp();
+  it("returns 401 if access token is invalid", async () => {
+    tokenServiceMock.verifyAccessToken.mockImplementation(() => {
+      throw new Error("bad token");
+    });
 
-  const res = await app.inject({
-    method: "GET",
-    url: "/protected",
-    headers: {
-      authorization: "Bearer invalid-token",
-    },
+    const app = buildApp();
+
+    const res = await app.inject({
+      method: "GET",
+      url: "/protected",
+      headers: {
+        authorization: "Bearer invalid-token",
+      },
+    });
+
+    expect(res.statusCode).toBe(401);
+    expect(JSON.parse(res.body)).toEqual({
+      error: "INVALID_ACCESS_TOKEN",
+      message: "INVALID_ACCESS_TOKEN",
+    });
   });
 
-  expect(res.statusCode).toBe(401);
-  expect(JSON.parse(res.body)).toEqual({
-    error: "INVALID_ACCESS_TOKEN",
+  it("allows request and sets req.user on valid token", async () => {
+    tokenServiceMock.verifyAccessToken.mockReturnValue({
+      userId: "user-123",
+    });
+
+    const app = buildApp();
+
+    const res = await app.inject({
+      method: "GET",
+      url: "/protected",
+      headers: {
+        authorization: "Bearer valid-token",
+      },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body)).toEqual({
+      user: { userId: "user-123" },
+    });
+
+    expect(tokenServiceMock.verifyAccessToken).toHaveBeenCalledWith(
+      "valid-token"
+    );
   });
-});
 
-it("allows request and sets req.user on valid token", async () => {
-  tokenServiceMock.verifyAccessToken.mockReturnValue({
-    userId: "user-123",
+  it("returns 401 if access token is expired", async () => {
+    tokenServiceMock.verifyAccessToken.mockImplementation(() => {
+      const err = new Error("expired");
+      (err as any).code = "FAST_JWT_EXPIRED";
+      throw err;
+    });
+
+    const app = buildApp();
+
+    const res = await app.inject({
+      method: "GET",
+      url: "/protected",
+      headers: {
+        authorization: "Bearer expired-token",
+      },
+    });
+
+    expect(res.statusCode).toBe(401);
+    expect(JSON.parse(res.body)).toEqual({
+      error: "TOKEN_EXPIRED",
+      message: "Token has expired",
+    });
   });
-
-  const app = buildApp();
-
-  const res = await app.inject({
-    method: "GET",
-    url: "/protected",
-    headers: {
-      authorization: "Bearer valid-token",
-    },
-  });
-
-  expect(res.statusCode).toBe(200);
-  expect(JSON.parse(res.body)).toEqual({
-    user: { userId: "user-123" },
-  });
-
-  expect(tokenServiceMock.verifyAccessToken).toHaveBeenCalledWith(
-    "valid-token"
-  );
-});
-
-
 });

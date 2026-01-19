@@ -56,7 +56,12 @@ describe("Auth Controller", () => {
 
     expect(authServiceMock.register).toHaveBeenCalledWith(
       "test@test.com",
-      "password"
+      "password",
+      {
+        firstName: undefined,
+        lastName: undefined,
+        avatarUrl: undefined,
+      }
     );
   });
 
@@ -110,6 +115,7 @@ describe("Auth Controller", () => {
     expect(res.statusCode).toBe(401);
     expect(JSON.parse(res.body)).toEqual({
       error: "INVALID_CREDENTIALS",
+      message: "INVALID_CREDENTIALS",
     });
   });
 
@@ -117,6 +123,7 @@ describe("Auth Controller", () => {
     authServiceMock.refresh.mockResolvedValue({
       accessToken: "new-access",
       refreshToken: "new-refresh",
+      csrfToken: "new-csrf",
     });
 
     const app = buildTestApp(authServiceMock);
@@ -133,6 +140,7 @@ describe("Auth Controller", () => {
 
     const body = JSON.parse(res.body);
     expect(body.accessToken).toBe("new-access");
+    expect(body.csrfToken).toBe("new-csrf");
 
     expect(res.headers["set-cookie"]).toContain("refreshToken=new-refresh");
 

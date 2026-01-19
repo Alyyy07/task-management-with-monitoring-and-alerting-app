@@ -4,6 +4,8 @@ import { AuthService } from "./auth.service.js";
 import {
   loginSchema,
   registerSchema,
+  refreshSchema,
+  logoutSchema,
 } from "./auth.schema.js";
 import { csrfGuard } from "../../plugins/csrf.js";
 import { authRepository } from "./auth.repository.js";
@@ -14,9 +16,9 @@ type AuthRoutesOptions = {
 
 export async function authRoutes(
   app: FastifyInstance,
-  opts: AuthRoutesOptions
+  opts: AuthRoutesOptions,
 ) {
-    const tokenService = app.tokenService;
+  const tokenService = app.tokenService;
 
   const authService =
     opts.authService || new AuthService(authRepository, tokenService);
@@ -28,28 +30,30 @@ export async function authRoutes(
     {
       schema: loginSchema,
     },
-    controller.login
+    controller.login,
   );
   app.post(
     "/register",
     {
       schema: registerSchema,
     },
-    controller.register
+    controller.register,
   );
   app.post(
     "/refresh",
     {
       preHandler: [app.authenticate, csrfGuard],
+      schema: refreshSchema,
     },
-    controller.refresh
+    controller.refresh,
   );
 
   app.post(
     "/logout",
     {
       preHandler: [app.authenticate, csrfGuard],
+      schema: logoutSchema,
     },
-    controller.logout
+    controller.logout,
   );
 }

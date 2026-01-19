@@ -1,13 +1,16 @@
 // authz/project.policy.ts
-import { Membership } from "../organization/organization.type.js";
+import { Membership } from "../organization.type.js";
 
 export function projectPolicy(
   context: { userId: string; isSuperAdmin?: boolean },
-  membership: Membership,
-  isCreator: boolean
+  membership: Membership | null,
 ) {
   if (context.isSuperAdmin) {
     return allowAll();
+  }
+
+  if (!membership) {
+    return denyAll();
   }
 
   if (membership.status !== "MEMBER") {
@@ -22,8 +25,9 @@ export function projectPolicy(
     return {
       canRead: () => true,
       canCreate: () => true,
-      canUpdate: () => isCreator,
+      canUpdate: () => true,
       canDelete: () => false,
+      canManageMembers: () => true,
     };
   }
 
@@ -32,6 +36,7 @@ export function projectPolicy(
     canCreate: () => false,
     canUpdate: () => false,
     canDelete: () => false,
+    canManageMembers: () => false,
   };
 }
 
@@ -41,6 +46,8 @@ function allowAll() {
     canCreate: () => true,
     canUpdate: () => true,
     canDelete: () => true,
+    canManageMembers: () => true,
+
   };
 }
 
@@ -50,5 +57,6 @@ function denyAll() {
     canCreate: () => false,
     canUpdate: () => false,
     canDelete: () => false,
+    canManageMembers: () => false,
   };
 }

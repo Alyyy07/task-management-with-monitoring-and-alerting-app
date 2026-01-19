@@ -8,6 +8,7 @@ export enum AuthErrorCode {
   NO_REFRESH_TOKEN = "NO_REFRESH_TOKEN",
   CSRF_REQUIRED = "CSRF_REQUIRED",
   INVALID_CSRF_TOKEN = "INVALID_CSRF_TOKEN",
+  TOKEN_EXPIRED = "TOKEN_EXPIRED",
 }
 
 export const AuthErrorStatus: Record<AuthErrorCode, number> = {
@@ -20,11 +21,15 @@ export const AuthErrorStatus: Record<AuthErrorCode, number> = {
   [AuthErrorCode.NO_REFRESH_TOKEN]: 403,
   [AuthErrorCode.CSRF_REQUIRED]: 403,
   [AuthErrorCode.INVALID_CSRF_TOKEN]: 403,
+  [AuthErrorCode.TOKEN_EXPIRED]: 401,
 };
 
 export class AuthError extends Error {
-  constructor(public code: AuthErrorCode) {
-    super(code);
+  constructor(
+    public code: AuthErrorCode,
+    public readonly message: string = code
+  ) {
+    super(message);
     this.name = "AuthError";
   }
 }

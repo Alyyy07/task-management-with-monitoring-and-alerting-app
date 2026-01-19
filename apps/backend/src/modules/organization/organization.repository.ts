@@ -1,46 +1,81 @@
 import { prisma } from "../../libs/prisma.js";
-import { Membership } from "./organization.type.js";
+import {
+  Membership,
+  Organization,
+  OrganizationRepository,
+} from "./organization.type.js";
 
-export const organizationRepository = {
+export const organizationRepository: OrganizationRepository = {
   findById(id: string) {
-    return prisma.organization.findUnique({ where: { id } });
+    return prisma.organization.findUnique({
+      where: { id, deletedAt: null },
+    });
   },
 
-  create(data: { name: string }) {
+  findBySlug(slug: string) {
+    return prisma.organization.findUnique({
+      where: { slug, deletedAt: null },
+    });
+  },
+
+  create(data: {
+    name: string;
+    slug: string;
+    description?: string;
+    logoUrl?: string;
+    createdById: string;
+  }) {
     return prisma.organization.create({ data });
   },
 
-  update(id: string, data: { name?: string }) {
+  update(
+    id: string,
+    data: {
+      name?: string;
+      slug?: string;
+      description?: string;
+      logoUrl?: string;
+    },
+  ) {
     return prisma.organization.update({ where: { id }, data });
   },
 
   delete(id: string) {
-    return prisma.organization.delete({ where: { id } });
+    return prisma.organization.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
   },
 
-  async getMembership(
-    userId: string,
-    organizationId: string
-  ): Promise<Membership> {
-    const membership = await prisma.membership.findUnique({
+  listAllOrg(): Promise<Organization[]> {
+    return prisma.organization.findMany({ where: { deletedAt: null } });
+  },
+
+  listOrgByUser(userId: string): Promise<Organization[]> {
+    return prisma.organization.findMany({
       where: {
-        userId_organizationId: { userId, organizationId },
+        memberships: { some: { userId } },
+        deletedAt: null,
       },
     });
+  },
 
-    if (!membership) {
-      const orgExists = await prisma.organization.findUnique({
-        where: { id: organizationId },
-        select: { id: true },
-      });
+  listMembers(orgId: string): Promise<Membership[]> {
+    return prisma.membership.findMany({
+      where: { organizationId: orgId },
+    });
+  },
 
-      return orgExists ? { status: "NOT_MEMBER" } : { status: "NOT_FOUND" };
-    }
-
-    return {
-      status: "MEMBER",
-      role: membership.role,
-    };
+  findMembership(userId: string, organizationId: string) {
+    return prisma.membership.findUnique({
+      where: {
+        userId_organizationId: {
+          userId,
+          organizationId,
+        },
+      },
+      select: { role: true },
+    });
   },
 
   addMember(userId: string, organizationId: string, role: "ADMIN" | "MEMBER") {
@@ -60,13 +95,49 @@ export const organizationRepository = {
   updateMemberRole(
     userId: string,
     organizationId: string,
-    role: "ADMIN" | "MEMBER"
+    role: "ADMIN" | "MEMBER",
   ) {
     return prisma.membership.update({
       where: {
         userId_organizationId: { userId, organizationId },
       },
       data: { role },
+    });
+  },
+  async createActivity(data: {
+    taskId?: string;
+    userId: string;
+    action: string;
+    projectId?: string;
+    organizationId?: string;
+    metadata?: any;
+    entityId: string;
+    entityType: string;
+  }) {
+    return prisma.activityLog.create({
+      data: {
+        taskId: data.taskId,
+        userId: data.userId,
+        action: data.action,
+        projectId: data.projectId,
+        organizationId: data.organizationId,
+        metadata: data.metadata,
+        entityId: data.entityId,
+        entityType: data.entityType,
+      },
+    });
+  },
+  async countProjects(orgId: string) {
+    return prisma.project.count({ where: { organizationId: orgId } });
+  },
+  async removeUserFromOrgProjects(userId: string, orgId: string) {
+    await prisma.projectMembership.deleteMany({
+      where: {
+        userId,
+        project: {
+          organizationId: orgId,
+        },
+      },
     });
   },
 };

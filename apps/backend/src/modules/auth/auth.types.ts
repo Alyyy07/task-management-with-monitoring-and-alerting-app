@@ -1,6 +1,9 @@
 export interface RegisterBody {
   email: string;
   password: string;
+  firstName?: string;
+  lastName?: string;
+  avatarUrl?: string;
 }
 
 export interface LoginBody {
@@ -24,13 +27,17 @@ export interface AuthResult {
 export interface AuthRepository {
   findByEmail(email: string): Promise<any | null>;
 
-  createUser(email: string, hashedPassword: string): Promise<any>;
+  createUser(
+    email: string,
+    hashedPassword: string,
+    profile?: { firstName?: string; lastName?: string; avatarUrl?: string }
+  ): Promise<any>;
 
   storeRefreshToken(
     userId: string,
     rawToken: string,
     expiresAt: Date
-  ): Promise<void>;
+  ): Promise<{ id: string }>;
 
   findValidRefreshToken(rawToken: string): Promise<{
     id: string;
@@ -44,10 +51,12 @@ export interface AuthRepository {
   storeCsrfToken(
     userId: string,
     rawToken: string,
-    expiresAt: Date
+    expiresAt: Date,
+    refreshTokenId?: string
   ): Promise<void>;
 
   revokeCsrfTokens(userId: string): Promise<void>;
+  revokeCsrfTokensBySession(refreshTokenId: string): Promise<void>;
   validateCsrfToken(
     rawRefreshToken: string,
     rawCsrfToken: string

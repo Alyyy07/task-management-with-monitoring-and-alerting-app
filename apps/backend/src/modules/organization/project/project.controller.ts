@@ -1,0 +1,102 @@
+import { FastifyReply, FastifyRequest } from "fastify";
+import { ProjectService } from "./project.service.js";
+import { ProjectStatus } from "./project.types.js";
+
+export function buildProjectController(service: ProjectService) {
+  return {
+    async list(req: FastifyRequest, reply: FastifyReply) {
+      const { orgId } = req.params as { orgId: string };
+      const projects = await service.list(req.user, orgId);
+      reply.send(projects);
+    },
+
+    async get(req: FastifyRequest, reply: FastifyReply) {
+      const { projectId } = req.params as { projectId: string };
+      const project = await service.get(req.user, projectId);
+      reply.send(project);
+    },
+
+    async getBySlug(req: FastifyRequest, reply: FastifyReply) {
+      const { orgId, slug } = req.params as { orgId: string; slug: string };
+      const project = await service.getBySlug(req.user, orgId, slug);
+      if (!project)
+        return reply.status(404).send({ error: "Project not found" });
+      reply.send(project);
+    },
+
+    async create(req: FastifyRequest, reply: FastifyReply) {
+      const body = req.body as {
+        name: string;
+        slug?: string;
+        description?: string;
+        startDate?: string;
+        endDate?: string;
+      };
+      const { orgId } = req.params as { orgId: string };
+      const project = await service.create(req.user, body, orgId);
+      reply.status(201).send(project);
+    },
+
+    async update(req: FastifyRequest, reply: FastifyReply) {
+      const body = req.body as {
+        name?: string;
+        slug?: string;
+        description?: string;
+        status?: ProjectStatus;
+        startDate?: string;
+        endDate?: string;
+      };
+      const { projectId } = req.params as {
+        projectId: string;
+      };
+      const project = await service.update(req.user, projectId, body);
+      reply.send(project);
+    },
+
+    async delete(req: FastifyRequest, reply: FastifyReply) {
+      const { projectId } = req.params as {
+        projectId: string;
+      };
+      const { cascade } = req.query as { cascade?: string };
+      await service.delete(req.user, projectId, cascade === "true");
+      reply.status(204).send();
+    },
+
+    async listMembers(req: FastifyRequest, reply: FastifyReply) {
+      const { projectId } = req.params as { projectId: string };
+      const members = await service.listMembers(req.user, projectId);
+      reply.status(200).send(members);
+    },
+
+    async addMember(req: FastifyRequest, reply: FastifyReply) {
+      const { projectId } = req.params as {
+        projectId: string;
+      };
+      const { userId, role } = req.body as {
+        userId: string;
+        role: "ADMIN" | "MEMBER";
+      };
+      await service.addMember(req.user, projectId, userId, role);
+      reply.status(204).send();
+    },
+
+    async removeMember(req: FastifyRequest, reply: FastifyReply) {
+      const { projectId, userId } = req.params as {
+        projectId: string;
+        userId: string;
+      };
+      await service.removeMember(req.user, projectId, userId);
+      reply.status(204).send();
+    },
+
+    async changeMemberRole(req: FastifyRequest, reply: FastifyReply) {
+      const { projectId, userId } = req.params as {
+        projectId: string;
+        userId: string;
+      };
+      const { role } = req.body as { role: "ADMIN" | "MEMBER" };
+      await service.changeMemberRole(req.user, projectId, userId, role);
+      reply.status(204).send();
+    },
+  };
+}
