@@ -17,7 +17,11 @@ export const AuthzErrorStatus: Record<AuthzErrorCode, number> = {
 };
 
 export class AuthzError extends Error {
-  constructor(public readonly code: AuthzErrorCode) {
-    super(code);
+  constructor(
+    public readonly code: AuthzErrorCode,
+    public readonly message: string = code
+  ) {
+    super(message);
+    this.name = "AuthzError";
   }
 }

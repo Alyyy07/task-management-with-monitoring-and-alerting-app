@@ -10,7 +10,7 @@ describe("requireSelf", () => {
     expect(() => requireSelf({ userId: "u1" }, "u2")).toThrow("NOT_OWNER");
   });
   it("throws if not member", async () => {
-    const isMember = vi.fn().mockResolvedValue(false);
+    const isMember = vi.fn().mockResolvedValue("NOT_MEMBER");
 
     await expect(
       requireOrgMember({ userId: "u1" }, "org1", isMember)
