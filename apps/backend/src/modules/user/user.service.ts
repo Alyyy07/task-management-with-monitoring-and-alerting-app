@@ -1,5 +1,5 @@
-import { requireSelf } from "../authz/authz.guard.js";
-import { AuthContext } from "../authz/authz.type.js";
+import { requireSelf } from "../../libs/authz/authz.guard.js";
+import { AuthContext } from "../../libs/authz/authz.type.js";
 import { UserRepository } from "./user.types.js";
 
 export class UserService {
